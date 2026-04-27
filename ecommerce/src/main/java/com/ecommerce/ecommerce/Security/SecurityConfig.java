@@ -1,10 +1,17 @@
 package com.ecommerce.ecommerce.Security;
 
+import com.ecommerce.ecommerce.Models.AppRole;
+import com.ecommerce.ecommerce.Models.Role;
+import com.ecommerce.ecommerce.Models.User;
+import com.ecommerce.ecommerce.Repositories.RoleRepository;
+import com.ecommerce.ecommerce.Repositories.UserRepository;
 import com.ecommerce.ecommerce.Security.Jwt.AuthEntryPointJwt;
 import com.ecommerce.ecommerce.Security.Jwt.AuthTokenFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -17,23 +24,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.Set;
+
 /**
- * Central Spring Security configuration for the E-commerce application.
+ * Central Spring Security configuration for the ShopFlow E-commerce application.
  *
- * <p>Establishes a <strong>stateless</strong> security model backed by JWT tokens
- * transported via HttpOnly cookies. Key decisions:
+ * <p>Key Security Decisions:
  * <ul>
- *   <li>CSRF is disabled because the API is stateless and cookie-based CSRF
- *       is mitigated by the {@code SameSite=Strict} attribute on the JWT cookie.</li>
- *   <li>Session creation is set to {@code STATELESS} — no {@code JSESSIONID}
- *       cookie will ever be issued.</li>
- *   <li>The {@link AuthTokenFilter} is registered <em>before</em>
- *       {@link UsernamePasswordAuthenticationFilter} so that JWT-based
- *       authentication is evaluated on every request.</li>
+ * <li>Stateless Session Management: No HTTP sessions are used; JWT is the source of truth[cite: 87].</li>
+ * <li>HttpOnly Cookies: JWT is transported via secure cookies to prevent XSS attacks.</li>
+ * <li>RBAC (Role-Based Access Control): Access is restricted based on USER and ADMIN roles[cite: 315].</li>
  * </ul>
- *
- * @see AuthTokenFilter
- * @see AuthEntryPointJwt
  */
 @Configuration
 @EnableWebSecurity
@@ -44,62 +45,73 @@ public class SecurityConfig {
     private final AuthEntryPointJwt unauthorizedHandler;
     private final AuthTokenFilter authTokenFilter;
 
-    /**
-     * Exposes a {@link BCryptPasswordEncoder} as the application-wide
-     * {@link PasswordEncoder} bean.
-     *
-     * @return a BCrypt-based password encoder
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Exposes the default {@link AuthenticationManager} so that it can be
-     * injected into the service layer for programmatic authentication.
-     *
-     * @param authConfig the auto-configured {@link AuthenticationConfiguration}
-     * @return the configured {@link AuthenticationManager}
-     * @throws Exception if the manager cannot be built
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
-    /**
-     * Builds the {@link SecurityFilterChain} defining HTTP security rules.
-     *
-     * @param http the {@link HttpSecurity} DSL builder
-     * @return the assembled filter chain
-     * @throws Exception if configuration fails
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF is safe to disable: the API is fully stateless and the JWT cookie
-                // uses SameSite=Strict, which prevents cross-origin form submissions.
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
-
-                // Return a structured JSON 401 response for unauthenticated requests
+                .cors(cors -> {}) // Enable CORS with default settings or custom if needed
                 .exceptionHandling(exception ->
                         exception.authenticationEntryPoint(unauthorizedHandler))
-
-                // Public endpoints: authentication routes only
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-
-                // Stateless session: Spring Security will never create or use an HTTP session
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public Endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() // Browsing is public [cite: 113, 189]
 
-        // Register the JWT filter before Spring's default username/password filter
+                        // Admin-Only Endpoints (Product Management)
+                        .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+                        // Protected Endpoints
+                        .requestMatchers("/api/cart/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/orders/**").hasAnyRole("USER", "ADMIN")
+
+                        .anyRequest().authenticated()
+                );
+
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Database Seeder: Automatically initializes roles and sample users on application startup.
+     */
+    @Bean
+    public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        return args -> {
+            // 1. Initialize Roles if they don't exist
+            Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
+                    .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_USER)));
+
+            Role sellerRole = roleRepository.findByRoleName(AppRole.ROLE_SELLER)
+                    .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_SELLER)));
+
+            Role adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
+                    .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_ADMIN)));
+
+            // 2. Pre-defined User Roles Sets
+            Set<Role> adminRoles = Set.of(userRole, sellerRole, adminRole);
+
+            // 3. Initialize Admin User (Check by username with lowercase 'n')
+            if (!userRepository.existsByUsername("admin")) {
+                User admin = new User("admin", "admin@shopflow.com", passwordEncoder.encode("Admin@123"));
+                admin.setRoles(adminRoles);
+                userRepository.save(admin);
+                System.out.println(">> Default Admin created: admin / Admin@123");
+            }
+        };
     }
 }
