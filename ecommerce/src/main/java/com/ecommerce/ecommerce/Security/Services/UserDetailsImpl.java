@@ -3,43 +3,53 @@ package com.ecommerce.ecommerce.Security.Services;
 import com.ecommerce.ecommerce.Models.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Custom implementation of Spring Security's UserDetails interface.
- * Used to wrap the User entity into an object that Spring Security can use for authentication and authorization.
+ * Immutable implementation of Spring Security's {@link UserDetails} interface.
+ *
+ * <p>Wraps the domain {@link User} entity into a security-aware principal that
+ * Spring Security uses throughout the authentication and authorization pipeline.
+ * Once constructed via the {@link #build(User)} factory method, the object is
+ * effectively immutable — no setters are exposed.</p>
+ *
+ * <p><strong>Security note:</strong> The {@code password} field is annotated with
+ * {@link JsonIgnore} to prevent accidental serialization into API responses.</p>
  */
-@Data
-@NoArgsConstructor
+@Getter
 @AllArgsConstructor
 public class UserDetailsImpl implements UserDetails {
 
-    private Long id;
-    private String username;
-    private String email;
+    private final Long id;
+    private final String username;
+    private final String email;
 
-    // Prevents the password from being serialized in JSON responses for security
+    /** The hashed password — excluded from JSON serialization for security. */
     @JsonIgnore
-    private String password;
+    private final String password;
 
-    private Collection<? extends GrantedAuthority> authorities;
+    private final Collection<? extends GrantedAuthority> authorities;
 
     /**
-     * Static factory method to convert a User entity into a UserDetailsImpl object.
-     * Maps roles from the entity to Spring Security GrantedAuthority.
-     * * @param user the User entity from the database
-     * @return a UserDetailsImpl instance
+     * Static factory method that converts a domain {@link User} entity into a
+     * Spring Security–compatible {@link UserDetailsImpl}.
+     *
+     * <p>Each {@link com.ecommerce.ecommerce.Models.Role} is mapped to a
+     * {@link SimpleGrantedAuthority} using the enum name (e.g., {@code ROLE_USER}).</p>
+     *
+     * @param user the persistent {@link User} entity loaded from the database
+     * @return a fully populated {@link UserDetailsImpl} instance
      */
     public static UserDetailsImpl build(User user) {
-        // Map User roles to SimpleGrantedAuthority
+        // Map domain roles → Spring Security GrantedAuthority objects
         List<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority(role.getRoleName().name()))
                 .collect(Collectors.toList());
@@ -52,9 +62,7 @@ public class UserDetailsImpl implements UserDetails {
                 authorities);
     }
 
-    /**
-     * Returns the authorities granted to the user.
-     */
+    /** {@inheritDoc} */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;
@@ -62,7 +70,8 @@ public class UserDetailsImpl implements UserDetails {
 
     /**
      * Indicates whether the user's account has expired.
-     * @return true (defaults to active)
+     *
+     * @return {@code true} — accounts never expire in the current implementation
      */
     @Override
     public boolean isAccountNonExpired() {
@@ -71,7 +80,8 @@ public class UserDetailsImpl implements UserDetails {
 
     /**
      * Indicates whether the user is locked or unlocked.
-     * @return true (defaults to not locked)
+     *
+     * @return {@code true} — accounts are never locked in the current implementation
      */
     @Override
     public boolean isAccountNonLocked() {
@@ -79,8 +89,9 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     /**
-     * Indicates whether the user's credentials (password) has expired.
-     * @return true (defaults to not expired)
+     * Indicates whether the user's credentials (password) have expired.
+     *
+     * @return {@code true} — credentials never expire in the current implementation
      */
     @Override
     public boolean isCredentialsNonExpired() {
@@ -89,10 +100,35 @@ public class UserDetailsImpl implements UserDetails {
 
     /**
      * Indicates whether the user is enabled or disabled.
-     * @return true (defaults to enabled)
+     *
+     * @return {@code true} — all users are enabled in the current implementation
      */
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    /**
+     * Two {@link UserDetailsImpl} instances are equal if they share the same {@code id}.
+     *
+     * @param o the object to compare
+     * @return {@code true} if both objects represent the same user
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UserDetailsImpl that = (UserDetailsImpl) o;
+        return Objects.equals(id, that.id);
+    }
+
+    /**
+     * Hash code based on the user's {@code id}.
+     *
+     * @return the hash code
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

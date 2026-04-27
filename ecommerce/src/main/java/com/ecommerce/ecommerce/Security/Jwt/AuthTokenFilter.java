@@ -5,9 +5,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,67 +19,96 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Filter class that executes once per request to validate JWT tokens and set user authentication.
+ * JWT authentication filter that executes <strong>once per request</strong>.
+ *
+ * <p>Intercepts every incoming HTTP request, extracts a JWT token from either
+ * the {@code Authorization: Bearer …} header or the HttpOnly cookie, validates
+ * it, and — if valid — populates the {@link SecurityContextHolder} with the
+ * authenticated principal.</p>
+ *
+ * <p>This filter is registered <em>before</em>
+ * {@link org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter}
+ * in the Spring Security filter chain (see
+ * {@link com.ecommerce.ecommerce.Security.SecurityConfig}).</p>
  */
 @Component
+@RequiredArgsConstructor
 public class AuthTokenFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService;
+    private final JwtUtils jwtUtils;
+    private final UserDetailsServiceImpl userDetailsService;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
+    /**
+     * Core filter logic: extract → validate → authenticate.
+     *
+     * @param request     the current HTTP request
+     * @param response    the current HTTP response
+     * @param filterChain the remaining filter chain
+     * @throws ServletException if a servlet error occurs
+     * @throws IOException      if an I/O error occurs
+     */
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
         try {
-            // Extract JWT from the Authorization header
+            // Step 1: Extract JWT from Authorization header or HttpOnly cookie
             String jwt = parseJwt(request);
 
-            // Validate the token and ensure it is not null
+            // Step 2: Validate the token's signature, expiration, and structure
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                // Get username from the validated token
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
-                // Load user details from the database
+                // Step 3: Load full user details from the database
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // Create authentication object
+                // Step 4: Build an authentication token with the user's granted authorities.
+                // Credentials are set to null because the JWT already proved identity.
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
                                 userDetails.getAuthorities());
 
-                // Build and set authentication details from the request
+                // Attach request-level details (remote address, session ID, etc.)
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Set the authentication in the Security Context
+                // Step 5: Inject the authentication into the SecurityContext so that
+                // downstream filters and controllers see the user as authenticated.
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
-            // Log error if authentication cannot be set
-            logger.error("Cannot set user authentication: {}", e);
+            // Log and swallow — the request will proceed unauthenticated,
+            // and Spring Security's entry point will handle the 401 if needed.
+            logger.error("Cannot set user authentication: {}", e.getMessage(), e);
         }
 
-        // Continue the filter chain
+        // Continue the filter chain regardless of authentication outcome
         filterChain.doFilter(request, response);
     }
 
     /**
-     * Helper method to extract the JWT token from the Authorization header.
+     * Extracts the JWT token from the request.
+     *
+     * <p>Resolution order:
+     * <ol>
+     *   <li>{@code Authorization: Bearer <token>} header (preferred for API clients)</li>
+     *   <li>HttpOnly cookie fallback (preferred for browser-based SPAs)</li>
+     * </ol>
+     *
+     * @param request the current HTTP request
+     * @return the raw JWT string, or {@code null} if no token is present
      */
     private String parseJwt(HttpServletRequest request) {
+        // Primary: Authorization header (standard for API consumers)
         String headerAuth = request.getHeader("Authorization");
-
-        // Check if the header contains a Bearer token
         if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
             return headerAuth.substring(7);
         }
 
-        return null;
+        // Fallback: HttpOnly cookie (secure browser-based transport)
+        return jwtUtils.getJwtFromCookies(request);
     }
 }
