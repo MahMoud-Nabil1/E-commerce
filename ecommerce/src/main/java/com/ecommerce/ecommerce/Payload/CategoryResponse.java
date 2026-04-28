@@ -1,0 +1,22 @@
+package com.ecommerce.ecommerce.Payload;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+/**
+ * Encapsulates the paginated response for category queries.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class CategoryResponse {
+    private List<CategoryDTO> content;
+    private Integer pageNumber;
+    private Integer pageSize;
+    private Long totalElements;
+    private Integer totalPages;
+    private boolean lastPage;
+}
