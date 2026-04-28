@@ -1,0 +1,64 @@
+# ==============================
+# OS Generated Files
+# ==============================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ==============================
+# IDEs and Editors
+# ==============================
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.iml
+*.iws
+*.ipr
+
+# ==============================
+# Node / Frontend (Vite)
+# ==============================
+node_modules/
+dist/
+dist-ssr/
+build/
+.npm/
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==============================
+# Java / Spring Boot (Maven)
+# ==============================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# ==============================
+# Misc
+# ==============================
+coverage/
+.nyc_output/
