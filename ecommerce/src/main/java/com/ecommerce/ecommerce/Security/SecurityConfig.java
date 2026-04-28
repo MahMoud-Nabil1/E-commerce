@@ -27,13 +27,18 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.util.Set;
 
 /**
- * Central Spring Security configuration for the ShopFlow E-commerce application.
+ * Central Spring Security configuration for the ShopFlow E-commerce
+ * application.
  *
- * <p>Key Security Decisions:
+ * <p>
+ * Key Security Decisions:
  * <ul>
- * <li>Stateless Session Management: No HTTP sessions are used; JWT is the source of truth[cite: 87].</li>
- * <li>HttpOnly Cookies: JWT is transported via secure cookies to prevent XSS attacks.</li>
- * <li>RBAC (Role-Based Access Control): Access is restricted based on USER and ADMIN roles[cite: 315].</li>
+ * <li>Stateless Session Management: No HTTP sessions are used; JWT is the
+ * source of truth[cite: 87].</li>
+ * <li>HttpOnly Cookies: JWT is transported via secure cookies to prevent XSS
+ * attacks.</li>
+ * <li>RBAC (Role-Based Access Control): Access is restricted based on USER and
+ * ADMIN roles[cite: 315].</li>
  * </ul>
  */
 @Configuration
@@ -61,10 +66,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> {
                 }) // Enable CORS with default settings or custom if needed
-                .exceptionHandling(exception ->
-                        exception.authenticationEntryPoint(unauthorizedHandler))
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         // Public Endpoints
@@ -74,8 +77,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().authenticated()
-                );
+                        .anyRequest().authenticated());
 
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -83,10 +85,12 @@ public class SecurityConfig {
     }
 
     /**
-     * Database Seeder: Automatically initializes roles and sample users on application startup.
+     * Database Seeder: Automatically initializes roles and sample users on
+     * application startup.
      */
     @Bean
-    public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository,
+            PasswordEncoder passwordEncoder) {
         return args -> {
             // 1. Initialize Roles if they don't exist
             Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
