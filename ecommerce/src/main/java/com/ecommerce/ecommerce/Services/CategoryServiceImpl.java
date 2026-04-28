@@ -85,11 +85,11 @@ public class CategoryServiceImpl implements CategoryService{
         Category savedCategory = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category","categoryId",categoryId));
 
-        Category category = modelMapper.map(categoryDTO, Category.class);
+        // Update only the fields provided by the DTO on the existing entity so
+        // relationships and other persistent state are preserved.
+        savedCategory.setCategoryName(categoryDTO.getCategoryName());
 
-        // Ensure the ID remains consistent during the update process
-        category.setCategoryId(categoryId);
-        savedCategory = categoryRepository.save(category);
+        savedCategory = categoryRepository.save(savedCategory);
         return modelMapper.map(savedCategory, CategoryDTO.class);
     }
 }

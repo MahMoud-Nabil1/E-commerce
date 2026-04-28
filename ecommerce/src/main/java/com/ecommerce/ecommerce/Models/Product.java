@@ -5,22 +5,19 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Entity mapping for the 'products' table in the database.
- * Contains validation constraints and defines relationships with Categories, Users (Sellers), and CartItems.
+ * Contains validation constraints and defines relationships with Categories and Users (Sellers).
  */
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "products")
-@ToString
 public class Product {
 
     @Id
@@ -45,14 +42,14 @@ public class Product {
     // Many products belong to one category
     @ManyToOne
     @JoinColumn(name = "category_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Category category;
 
     // The seller who owns/listed this product
     @ManyToOne
     @JoinColumn(name = "seller_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private User user;
-
-    // Links the product to carts where it has been added
-    @OneToMany(mappedBy = "product", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
-    private List<CartItem> products = new ArrayList<>();
 }

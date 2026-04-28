@@ -67,9 +67,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public Endpoints
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/public/**").permitAll() // Public browsing endpoints
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() // Browsing is public [cite: 113, 189]
 
-                        // Admin-Only Endpoints (Product Management)
+                        // Admin-Only Endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Seller Endpoints
+                        .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
+
+                        // Product Management (legacy path - Admin only)
                         .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
