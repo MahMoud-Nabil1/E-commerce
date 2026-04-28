@@ -11,7 +11,8 @@ import lombok.ToString;
 
 /**
  * Entity mapping for the 'products' table in the database.
- * Contains validation constraints and defines relationships with Categories and Users (Sellers).
+ * Contains validation constraints and defines relationships with Categories and
+ * Users (Sellers).
  */
 @Entity
 @Data
