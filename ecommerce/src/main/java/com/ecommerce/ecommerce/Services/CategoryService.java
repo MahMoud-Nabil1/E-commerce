@@ -1,0 +1,18 @@
+package com.ecommerce.ecommerce.Services;
+
+import com.ecommerce.ecommerce.Models.Category;
+import com.ecommerce.ecommerce.Payload.CategoryDTO;
+import com.ecommerce.ecommerce.Payload.CategoryResponse;
+
+/**
+ * Service interface outlining category business logic and operations.
+ */
+public interface CategoryService {
+    CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
+
+    CategoryDTO createCategory(CategoryDTO categoryDTO);
+
+    CategoryDTO deleteCategory(Long categoryId);
+
+    CategoryDTO updateCategory(CategoryDTO categoryDTO, Long categoryId);
+}
