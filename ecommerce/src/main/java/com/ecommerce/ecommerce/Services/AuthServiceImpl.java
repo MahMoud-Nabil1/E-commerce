@@ -31,17 +31,22 @@ import java.util.stream.Collectors;
  * Implementation of the {@link AuthService} interface providing authentication,
  * registration, and user management business logic.
  *
- * <p>This service is responsible for:
+ * <p>
+ * This service is responsible for:
  * <ul>
- *   <li>Authenticating users via the Spring Security {@link AuthenticationManager}</li>
- *   <li>Creating new user accounts with encoded passwords and resolved roles</li>
- *   <li>Generating and clearing JWT cookies for stateless session management</li>
- *   <li>Extracting the currently authenticated user's profile from the security context</li>
+ * <li>Authenticating users via the Spring Security
+ * {@link AuthenticationManager}</li>
+ * <li>Creating new user accounts with encoded passwords and resolved roles</li>
+ * <li>Generating and clearing JWT cookies for stateless session management</li>
+ * <li>Extracting the currently authenticated user's profile from the security
+ * context</li>
  * </ul>
  *
- * <p><strong>Design note:</strong> This service intentionally does <em>not</em>
+ * <p>
+ * <strong>Design note:</strong> This service intentionally does <em>not</em>
  * return {@link org.springframework.http.ResponseEntity} — HTTP-layer concerns
- * are the responsibility of the controller.</p>
+ * are the responsibility of the controller.
+ * </p>
  */
 @Service
 @RequiredArgsConstructor
@@ -56,12 +61,14 @@ public class AuthServiceImpl implements AuthService {
     /**
      * {@inheritDoc}
      *
-     * <p>Flow:
+     * <p>
+     * Flow:
      * <ol>
-     *   <li>Authenticate credentials via the {@link AuthenticationManager}</li>
-     *   <li>Inject the resulting {@link Authentication} into the {@link SecurityContextHolder}</li>
-     *   <li>Generate a signed JWT and wrap it in an HttpOnly cookie</li>
-     *   <li>Build and return the user info response alongside the cookie</li>
+     * <li>Authenticate credentials via the {@link AuthenticationManager}</li>
+     * <li>Inject the resulting {@link Authentication} into the
+     * {@link SecurityContextHolder}</li>
+     * <li>Generate a signed JWT and wrap it in an HttpOnly cookie</li>
+     * <li>Build and return the user info response alongside the cookie</li>
      * </ol>
      */
     @Override
@@ -72,7 +79,8 @@ public class AuthServiceImpl implements AuthService {
                         loginRequest.getUsername(),
                         loginRequest.getPassword()));
 
-        // Inject authenticated principal into the SecurityContext for the current request
+        // Inject authenticated principal into the SecurityContext for the current
+        // request
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -90,9 +98,11 @@ public class AuthServiceImpl implements AuthService {
     /**
      * {@inheritDoc}
      *
-     * <p>Validates uniqueness of username and email before persisting the new user.
+     * <p>
+     * Validates uniqueness of username and email before persisting the new user.
      * Passwords are hashed with the configured {@link PasswordEncoder} (BCrypt)
-     * before being stored.</p>
+     * before being stored.
+     * </p>
      */
     @Override
     public MessageResponse register(RegisterRequest signUpRequest) {
@@ -166,7 +176,8 @@ public class AuthServiceImpl implements AuthService {
     // ======================== Private Helpers ========================
 
     /**
-     * Resolves a {@link Role} entity from the database by its {@link AppRole} enum value.
+     * Resolves a {@link Role} entity from the database by its {@link AppRole} enum
+     * value.
      *
      * @param appRole the role enum to look up
      * @return the corresponding {@link Role} entity
@@ -179,7 +190,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Extracts a list of role name strings from the authenticated user's authorities.
+     * Extracts a list of role name strings from the authenticated user's
+     * authorities.
      *
      * @param userDetails the authenticated user's details
      * @return a list of role names (e.g., {@code ["ROLE_USER", "ROLE_ADMIN"]})
