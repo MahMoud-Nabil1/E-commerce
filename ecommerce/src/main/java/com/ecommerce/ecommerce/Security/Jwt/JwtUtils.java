@@ -1,3 +1,4 @@
+// JWT creation, parsing, validation, and cookie management.
 package com.ecommerce.ecommerce.Security.Jwt;
 
 import com.ecommerce.ecommerce.Security.Services.UserDetailsImpl;
@@ -57,23 +58,13 @@ public class JwtUtils {
      */
     private Key signingKey;
 
-    /**
-     * Initializes the HMAC signing key from the Base64-encoded secret.
-     * Called automatically after dependency injection is complete.
-     */
+    // Computes HMAC key once at startup to avoid per-request cost.
     @PostConstruct
     private void initSigningKey() {
-        // Decode the Base64 secret and derive an HMAC-SHA key.
-        // Done once here instead of on every JWT operation for performance.
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
-    /**
-     * Extracts the JWT token value from the named HttpOnly cookie.
-     *
-     * @param request the current HTTP request
-     * @return the raw JWT string, or {@code null} if the cookie is absent
-     */
+    // Reads JWT value from the named HttpOnly cookie.
     public String getJwtFromCookies(HttpServletRequest request) {
         Cookie cookie = WebUtils.getCookie(request, jwtCookie);
         return cookie != null ? cookie.getValue() : null;
@@ -107,12 +98,7 @@ public class JwtUtils {
                 .build();
     }
 
-    /**
-     * Creates an empty cookie with {@code maxAge=0} that instructs the browser
-     * to immediately delete the JWT cookie, effectively logging the user out.
-     *
-     * @return a {@link ResponseCookie} that clears the JWT cookie
-     */
+    // Returns an empty cookie that tells browser to delete JWT.
     public ResponseCookie getCleanJwtCookie() {
         return ResponseCookie.from(jwtCookie, "")
                 .path("/api")
@@ -123,12 +109,7 @@ public class JwtUtils {
                 .build();
     }
 
-    /**
-     * Creates a signed JWT token with the given username as the subject.
-     *
-     * @param username the username to embed as the JWT subject claim
-     * @return the compact, URL-safe JWT string
-     */
+    // Builds a signed JWT with username as subject claim.
     public String generateTokenFromUsername(String username) {
         Date now = new Date();
         return Jwts.builder()
@@ -139,12 +120,7 @@ public class JwtUtils {
                 .compact();
     }
 
-    /**
-     * Extracts the username (subject claim) from a signed JWT token.
-     *
-     * @param token the JWT string to parse
-     * @return the username embedded in the token
-     */
+    // Extracts username from a valid JWT token.
     public String getUserNameFromJwtToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(signingKey)
@@ -154,12 +130,7 @@ public class JwtUtils {
                 .getSubject();
     }
 
-    /**
-     * Validates a JWT token by checking its signature, structure, and expiration.
-     *
-     * @param authToken the JWT string to validate
-     * @return {@code true} if the token is valid; {@code false} otherwise
-     */
+    // Checks signature, structure, and expiration. Returns false on failure.
     public boolean validateJwtToken(String authToken) {
         try {
             Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(authToken);

@@ -1,3 +1,4 @@
+// Extracts logged-in user details from Spring Security context.
 package com.ecommerce.ecommerce.util;
 
 import com.ecommerce.ecommerce.Models.User;

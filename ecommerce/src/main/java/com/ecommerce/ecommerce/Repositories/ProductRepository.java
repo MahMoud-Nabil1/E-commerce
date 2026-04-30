@@ -1,3 +1,4 @@
+// DB access for products: category, keyword, seller, and spec-based queries.
 package com.ecommerce.ecommerce.Repositories;
 
 import com.ecommerce.ecommerce.Models.Category;
@@ -19,5 +20,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Page<Product> findByProductNameLikeIgnoreCase(String keyword, Pageable pageDetails);
 
+    // Used by seller dashboard to show only their own products.
     Page<Product> findByUser(User user, Pageable pageDetails);
 }

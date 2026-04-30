@@ -11,13 +11,13 @@ import java.util.Set;
  * Request DTO for the user registration endpoint ({@code POST /api/auth/signup}).
  *
  * <p>All fields are validated using Jakarta Bean Validation constraints.
- * The {@code role} field is optional — if omitted, the user is assigned
+ * The {@code role} field is optional Ã¢â‚¬â€ if omitted, the user is assigned
  * {@code ROLE_USER} by default.</p>
  */
 @Data
 public class RegisterRequest {
 
-    /** The desired username (must be unique, 3–20 characters). */
+    /** The desired username (must be unique, 3Ã¢â‚¬â€œ20 characters). */
     @NotBlank(message = "Username cannot be blank")
     @Size(min = 3, max = 20)
     private String username;
@@ -27,7 +27,7 @@ public class RegisterRequest {
     @Email(message = "Invalid email format")
     private String email;
 
-    /** The desired password (6–40 characters, will be BCrypt-hashed before storage). */
+    /** The desired password (6Ã¢â‚¬â€œ40 characters, will be BCrypt-hashed before storage). */
     @NotBlank
     @Size(min = 6, max = 40)
     private String password;

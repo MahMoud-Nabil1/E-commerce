@@ -21,7 +21,7 @@ public class UserInfoResponse {
     /** The user's unique database identifier. */
     private Long id;
 
-    /** The signed JWT token (optional — may be {@code null} when using cookie transport). */
+    /** The signed JWT token (optional Ã¢â‚¬â€ may be {@code null} when using cookie transport). */
     private String jwtToken;
 
     /** The user's username. */

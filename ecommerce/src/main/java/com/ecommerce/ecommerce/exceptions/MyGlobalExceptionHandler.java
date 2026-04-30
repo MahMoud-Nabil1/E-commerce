@@ -1,3 +1,4 @@
+// Catches all exceptions globally and returns consistent JSON errors.
 package com.ecommerce.ecommerce.exceptions;
 
 import com.ecommerce.ecommerce.Payload.APIResponse;
@@ -33,7 +34,7 @@ public class MyGlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST);
     }
 
-    // Handles missing resource errors, returning a 404 Not Found status
+    // Returns 404 when a DB entity is not found.
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<APIResponse> myResourceNotFoundException(ResourceNotFoundException e) {
         String message = e.getMessage();
@@ -41,7 +42,7 @@ public class MyGlobalExceptionHandler {
         return new ResponseEntity<>(apiResponse, HttpStatus.NOT_FOUND);
     }
 
-    // Handles custom API logic errors, returning a 400 Bad Request status
+    // Returns 400 for business logic violations.
     @ExceptionHandler(APIException.class)
     public ResponseEntity<APIResponse> myAPIException(APIException e) {
         String message = e.getMessage();

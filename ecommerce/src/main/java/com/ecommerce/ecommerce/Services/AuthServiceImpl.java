@@ -1,3 +1,4 @@
+// Login, registration, JWT cookie management, user profile retrieval.
 package com.ecommerce.ecommerce.Services;
 
 import com.ecommerce.ecommerce.Models.AppRole;
@@ -73,7 +74,6 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public AuthenticationResult login(LoginRequest loginRequest) {
-        // Delegate credential verification to Spring Security's AuthenticationManager
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
@@ -85,7 +85,6 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-        // Generate a signed JWT wrapped in a secure HttpOnly cookie
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
 
         List<String> roles = extractRoleNames(userDetails);
@@ -106,29 +105,26 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public MessageResponse register(RegisterRequest signUpRequest) {
-        // Guard: ensure username uniqueness
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            throw new RuntimeException("Error: Username is already taken!");
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Username is already taken!");
         }
 
-        // Guard: ensure email uniqueness
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            throw new RuntimeException("Error: Email is already in use!");
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Email is already in use!");
         }
 
         User user = new User();
         user.setUsername(signUpRequest.getUsername());
         user.setEmail(signUpRequest.getEmail());
 
-        // Hash the raw password before persistence — never store plaintext passwords
+        // Never store plaintext passwords.
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
 
-        // Resolve and assign roles
         Set<String> requestedRoles = signUpRequest.getRole();
         Set<Role> roles = new HashSet<>();
 
+        // Default to ROLE_USER when no role is specified.
         if (requestedRoles == null || requestedRoles.isEmpty()) {
-            // Default to ROLE_USER when no specific role is requested
             roles.add(resolveRole(AppRole.ROLE_USER));
         } else {
             requestedRoles.forEach(roleName -> {
@@ -146,9 +142,7 @@ public class AuthServiceImpl implements AuthService {
         return new MessageResponse("User registered successfully!");
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // Extracts user info from the current security context.
     @Override
     public UserInfoResponse getCurrentUserDetails(Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -156,20 +150,15 @@ public class AuthServiceImpl implements AuthService {
         return new UserInfoResponse(userDetails.getId(), userDetails.getUsername(), roles);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // Returns an empty cookie that clears the JWT on logout.
     @Override
     public ResponseCookie logoutUser() {
         return jwtUtils.getCleanJwtCookie();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // TODO: Implement seller-specific query with role filtering.
     @Override
     public Object getAllSellers(Pageable pageDetails) {
-        // TODO: Implement seller-specific query with role filtering
         return "Sellers list logic will be implemented here";
     }
 

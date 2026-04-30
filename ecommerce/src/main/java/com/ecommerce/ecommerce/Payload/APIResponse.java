@@ -1,12 +1,10 @@
+// DTO: standardized API feedback with message and success flag.
 package com.ecommerce.ecommerce.Payload;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Standardized response object for API feedback and status messaging.
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

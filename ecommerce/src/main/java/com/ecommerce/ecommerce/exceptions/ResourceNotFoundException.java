@@ -1,9 +1,6 @@
+// Thrown when a DB entity lookup by ID or field fails (triggers 404).
 package com.ecommerce.ecommerce.exceptions;
 
-/**
- * Custom runtime exception thrown when a requested database entity (like a Product or Category)
- * cannot be found. Formats a clear error message based on the missing resource details.
- */
 public class ResourceNotFoundException extends RuntimeException {
     String resourceName;
     String field;
@@ -13,6 +10,7 @@ public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException() {
     }
 
+    // For string-based lookups (e.g. find by email).
     public ResourceNotFoundException(String resourceName, String field, String fieldName) {
         super(String.format("%s not found with %s: %s", resourceName, field, fieldName));
         this.resourceName = resourceName;
@@ -20,6 +18,7 @@ public class ResourceNotFoundException extends RuntimeException {
         this.fieldName = fieldName;
     }
 
+    // For ID-based lookups (e.g. find by productId).
     public ResourceNotFoundException(String resourceName, String field, Long fieldId) {
         super(String.format("%s not found with %s: %d", resourceName, field, fieldId));
         this.resourceName = resourceName;

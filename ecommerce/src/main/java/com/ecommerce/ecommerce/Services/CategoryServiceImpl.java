@@ -1,3 +1,4 @@
+// Category CRUD with duplicate detection and pagination.
 package com.ecommerce.ecommerce.Services;
 
 import com.ecommerce.ecommerce.exceptions.APIException;
@@ -29,9 +30,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private ModelMapper modelMapper;
 
+    // Returns paginated category list for public browsing.
     @Override
     public CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        // Determine sorting direction based on user input
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -43,12 +44,10 @@ public class CategoryServiceImpl implements CategoryService {
         if (categories.isEmpty())
             throw new APIException("No category created till now.");
 
-        // Map entities to DTOs for the response
         List<CategoryDTO> categoryDTOS = categories.stream()
                 .map(category -> modelMapper.map(category, CategoryDTO.class))
                 .toList();
 
-        // Construct the paginated response
         CategoryResponse categoryResponse = new CategoryResponse();
         categoryResponse.setContent(categoryDTOS);
         categoryResponse.setPageNumber(categoryPage.getNumber());
@@ -59,11 +58,11 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryResponse;
     }
 
+    // Creates category if name doesn't already exist. DB write.
     @Override
     public CategoryDTO createCategory(CategoryDTO categoryDTO) {
         Category category = modelMapper.map(categoryDTO, Category.class);
 
-        // Prevent creation of duplicate categories
         Category categoryFromDb = categoryRepository.findByCategoryName(category.getCategoryName());
         if (categoryFromDb != null)
             throw new APIException("Category with the name " + category.getCategoryName() + " already exists !!!");
@@ -72,6 +71,7 @@ public class CategoryServiceImpl implements CategoryService {
         return modelMapper.map(savedCategory, CategoryDTO.class);
     }
 
+    // Deletes category. Cascades to associated products.
     @Override
     public CategoryDTO deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
@@ -81,13 +81,12 @@ public class CategoryServiceImpl implements CategoryService {
         return modelMapper.map(category, CategoryDTO.class);
     }
 
+    // Updates category name only, preserving relationships.
     @Override
     public CategoryDTO updateCategory(CategoryDTO categoryDTO, Long categoryId) {
         Category savedCategory = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
 
-        // Update only the fields provided by the DTO on the existing entity so
-        // relationships and other persistent state are preserved.
         savedCategory.setCategoryName(categoryDTO.getCategoryName());
 
         savedCategory = categoryRepository.save(savedCategory);

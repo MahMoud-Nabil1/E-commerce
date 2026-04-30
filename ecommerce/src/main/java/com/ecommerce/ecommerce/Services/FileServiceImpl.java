@@ -1,3 +1,4 @@
+// Saves uploaded files to disk with unique names.
 package com.ecommerce.ecommerce.Services;
 
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import java.util.UUID;
 @Service
 public class FileServiceImpl implements FileService {
 
+    // Stores file with UUID name to avoid collisions. Returns filename.
     @Override
     public String uploadImage(String path, MultipartFile file) throws IOException {
         String originalFileName = file.getOriginalFilename();
@@ -27,17 +29,15 @@ public class FileServiceImpl implements FileService {
 
         String extension = originalFileName.substring(extensionIndex);
 
-        // Generate a unique identifier to prevent file name collisions
+        // UUID prevents overwrites when users upload same-named files.
         String randomId = UUID.randomUUID().toString();
         String fileName = randomId.concat(extension);
         String filePath = path + File.separator + fileName;
 
-        // Ensure the target directory exists, create it if necessary
         File folder = new File(path);
         if (!folder.exists())
             folder.mkdirs();
 
-        // Save the file to the specified path
         Files.copy(file.getInputStream(), Paths.get(filePath));
         return fileName;
     }

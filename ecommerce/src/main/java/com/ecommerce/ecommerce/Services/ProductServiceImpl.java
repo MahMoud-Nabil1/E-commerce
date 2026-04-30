@@ -1,3 +1,4 @@
+// Product CRUD, search, image uploads, role-scoped queries.
 package com.ecommerce.ecommerce.Services;
 
 import com.ecommerce.ecommerce.exceptions.APIException;
@@ -24,9 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Implementation of the ProductService handling core product business logic.
- */
 @Service
 public class ProductServiceImpl implements ProductService {
     @Autowired
@@ -50,6 +48,7 @@ public class ProductServiceImpl implements ProductService {
     @Value("${image.base.url}")
     private String imageBaseUrl;
 
+    // Creates product under a category. Seller is auto-assigned.
     @Override
     public ProductDTO addProduct(Long categoryId, ProductDTO productDTO) {
         Category category = categoryRepository.findById(categoryId)
@@ -57,7 +56,7 @@ public class ProductServiceImpl implements ProductService {
 
         boolean isProductNotPresent = true;
 
-        // Check if a product with the same name already exists in the selected category
+        // Reject duplicate product names within same category.
         List<Product> products = category.getProducts();
         for (Product value : products) {
             if (value.getProductName().equals(productDTO.getProductName())) {
@@ -72,7 +71,7 @@ public class ProductServiceImpl implements ProductService {
             product.setCategory(category);
             product.setUser(authUtil.loggedInUser());
 
-            // Calculate and set the special discounted price
+            // Server-side price calculation prevents price manipulation.
             double specialPrice = product.getPrice() -
                     ((product.getDiscount() * 0.01) * product.getPrice());
             product.setSpecialPrice(specialPrice);
@@ -84,6 +83,7 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    // Public product listing with optional keyword and category filters.
     @Override
     public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder,
             String keyword, String category) {
@@ -94,7 +94,7 @@ public class ProductServiceImpl implements ProductService {
 
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
 
-        // Build dynamic query specifications for filtering
+        // Dynamic specs let frontend combine filters freely.
         Specification<Product> spec = (root, query, cb) -> cb.conjunction();
         if (keyword != null && !keyword.isEmpty()) {
             spec = spec.and((root, query, criteriaBuilder) -> criteriaBuilder
@@ -110,7 +110,6 @@ public class ProductServiceImpl implements ProductService {
 
         List<Product> products = pageProducts.getContent();
 
-        // Convert entities to DTOs and append image URLs
         List<ProductDTO> productDTOS = products.stream()
                 .map(product -> {
                     ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
@@ -119,7 +118,6 @@ public class ProductServiceImpl implements ProductService {
                 })
                 .toList();
 
-        // Construct the final paginated response
         ProductResponse productResponse = new ProductResponse();
         productResponse.setContent(productDTOS);
         productResponse.setPageNumber(pageProducts.getNumber());
@@ -160,6 +158,7 @@ public class ProductServiceImpl implements ProductService {
         return productResponse;
     }
 
+    // Returns only products owned by logged-in seller.
     @Override
     public ProductResponse getAllProductsForSeller(Integer pageNumber, Integer pageSize, String sortBy,
             String sortOrder) {
@@ -169,7 +168,6 @@ public class ProductServiceImpl implements ProductService {
 
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
 
-        // Retrieve only the products associated with the currently authenticated seller
         User user = authUtil.loggedInUser();
         Page<Product> pageProducts = productRepository.findByUser(user, pageDetails);
 
@@ -193,11 +191,12 @@ public class ProductServiceImpl implements ProductService {
         return productResponse;
     }
 
-    // Helper method to build the full URL for product images
+    // Builds full image URL from filename for frontend display.
     private String constructImageUrl(String imageName) {
         return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
     }
 
+    // Lists products within a specific category.
     @Override
     public ProductResponse searchByCategory(Long categoryId, Integer pageNumber, Integer pageSize, String sortBy,
             String sortOrder) {
@@ -235,6 +234,7 @@ public class ProductServiceImpl implements ProductService {
         return productResponse;
     }
 
+    // Full-text search on product names (case-insensitive).
     @Override
     public ProductResponse searchProductByKeyword(String keyword, Integer pageNumber, Integer pageSize, String sortBy,
             String sortOrder) {
@@ -269,6 +269,7 @@ public class ProductServiceImpl implements ProductService {
         return productResponse;
     }
 
+    // Updates product details. Recalculates special price server-side.
     @Override
     public ProductDTO updateProduct(Long productId, ProductDTO productDTO) {
         Product productFromDb = productRepository.findById(productId)
@@ -276,7 +277,6 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = modelMapper.map(productDTO, Product.class);
 
-        // Update core product details
         productFromDb.setProductName(product.getProductName());
         productFromDb.setDescription(product.getDescription());
         productFromDb.setQuantity(product.getQuantity());
@@ -292,6 +292,7 @@ public class ProductServiceImpl implements ProductService {
         return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
+    // Deletes product from DB. Cascades to cart items.
     @Override
     public ProductDTO deleteProduct(Long productId) {
         Product product = productRepository.findById(productId)
@@ -301,12 +302,12 @@ public class ProductServiceImpl implements ProductService {
         return modelMapper.map(product, ProductDTO.class);
     }
 
+    // Saves uploaded image to disk, updates product record.
     @Override
     public ProductDTO updateProductImage(Long productId, MultipartFile image) throws IOException {
         Product productFromDb = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
 
-        // Process file upload and update entity with the new file name
         String fileName = fileService.uploadImage(path, image);
         productFromDb.setImage(fileName);
 

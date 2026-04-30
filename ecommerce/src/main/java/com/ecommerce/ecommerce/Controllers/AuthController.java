@@ -1,3 +1,4 @@
+// HTTP endpoints for login, signup, logout, and user info.
 package com.ecommerce.ecommerce.Controllers;
 
 import com.ecommerce.ecommerce.Payload.AuthenticationResult;
@@ -18,16 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * REST controller handling all authentication-related HTTP endpoints.
- *
- * <p>Maps to {@code /api/auth/**} and delegates business logic entirely
- * to the {@link AuthService} layer, keeping the controller thin and
- * focused on HTTP concerns (status codes, headers, response wrapping).</p>
- *
- * <p>All endpoints that modify state use {@code POST}; read-only queries
- * use {@code GET}.</p>
- */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -36,31 +27,23 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * Authenticates a user with username/password credentials.
-     *
-     * <p>On success, sets the JWT as an HttpOnly cookie via the
-     * {@code Set-Cookie} response header and returns the user info
-     * in the response body.</p>
-     *
-     * @param loginRequest the login credentials (validated via {@code @Valid})
-     * @return a {@link UserInfoResponse} with the JWT cookie attached
+     * What it does: Authenticates a user and sets a JWT cookie in the response header.
+     * What it expects: A LoginRequest containing username and password in the JSON body.
+     * What it returns: A UserInfoResponse with user details, and a Set-Cookie header with the JWT token.
      */
-    @PostMapping("/signin")
+    @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         AuthenticationResult result = authService.login(loginRequest);
 
-        // Attach the JWT as an HttpOnly cookie in the Set-Cookie header
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, result.getJwtCookie().toString())
                 .body(result.getResponse());
     }
 
     /**
-     * Registers a new user account.
-     *
-     * @param signUpRequest the registration payload (validated via {@code @Valid})
-     * @return a {@link MessageResponse} indicating success, or HTTP 400 if
-     *         the username/email is already taken
+     * What it does: Registers a new user in the system. Throws an error if username or email is taken.
+     * What it expects: A RegisterRequest containing username, email, password, and optionally a set of roles.
+     * What it returns: A MessageResponse confirming successful registration with 200 OK.
      */
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
@@ -69,10 +52,9 @@ public class AuthController {
     }
 
     /**
-     * Returns the username of the currently authenticated user.
-     *
-     * @param authentication the current security context (injected by Spring)
-     * @return the username string, or an empty string if unauthenticated
+     * What it does: Returns the current authenticated user's username from the security context.
+     * What it expects: Authentication context (cookie/token).
+     * What it returns: The username as a plain string, or an empty string if unauthenticated.
      */
     @GetMapping("/username")
     public String currentUserName(Authentication authentication) {
@@ -80,10 +62,9 @@ public class AuthController {
     }
 
     /**
-     * Returns the full profile details of the currently authenticated user.
-     *
-     * @param authentication the current security context (injected by Spring)
-     * @return a {@link UserInfoResponse} containing user ID, username, and roles
+     * What it does: Returns the full profile details (ID, username, roles) of the logged-in user.
+     * What it expects: Authentication context (cookie/token).
+     * What it returns: A UserInfoResponse object wrapped in a 200 OK.
      */
     @GetMapping("/user")
     public ResponseEntity<?> getUserDetails(Authentication authentication) {
@@ -91,10 +72,9 @@ public class AuthController {
     }
 
     /**
-     * Logs the current user out by clearing the JWT cookie.
-     *
-     * @return a {@link MessageResponse} confirming sign-out, with a cookie-clearing
-     *         {@code Set-Cookie} header
+     * What it does: Clears the JWT cookie, effectively logging out the user.
+     * What it expects: No parameters, just a POST request to this endpoint.
+     * What it returns: A MessageResponse confirming logout, and clears the JWT cookie in the response header.
      */
     @PostMapping("/signout")
     public ResponseEntity<?> signoutUser() {
@@ -105,10 +85,9 @@ public class AuthController {
     }
 
     /**
-     * Returns a paginated list of all users with the SELLER role.
-     *
-     * @param pageNumber the zero-based page index (defaults to {@link AppConstants#PAGE_NUMBER})
-     * @return a paginated response of seller data
+     * What it does: Lists all user accounts that have the SELLER role, with pagination.
+     * What it expects: Optional 'pageNumber' query parameter (defaults to configured constant).
+     * What it returns: A paginated list of sellers with 200 OK.
      */
     @GetMapping("/sellers")
     public ResponseEntity<?> getAllSellers(
