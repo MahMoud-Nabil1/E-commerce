@@ -18,6 +18,26 @@ import org.springframework.web.util.WebUtils;
 import java.security.Key;
 import java.util.Date;
 
+/**
+ * Utility component responsible for all JWT lifecycle operations:
+ * <strong>generation</strong>, <strong>parsing</strong>,
+ * <strong>validation</strong>,
+ * and <strong>cookie management</strong>.
+ *
+ * <p>
+ * The signing key is derived from a Base64-encoded secret configured in
+ * {@code application.properties} and is computed <em>once</em> at startup
+ * for optimal performance.
+ * </p>
+ *
+ * <p>
+ * JWT tokens are delivered to the browser inside an {@code HttpOnly},
+ * {@code Secure}, {@code SameSite=Strict} cookie, providing robust
+ * protection against XSS and CSRF attacks.
+ * </p>
+ *
+ * @see AuthTokenFilter
+ */
 @Component
 public class JwtUtils {
 
@@ -32,6 +52,10 @@ public class JwtUtils {
     @Value("${spring.app.jwtCookieName:ecommerce-cookie}")
     private String jwtCookie;
 
+    /**
+     * HMAC-SHA signing key — computed once at startup and reused for every JWT
+     * operation.
+     */
     private Key signingKey;
 
     // Computes HMAC key once at startup to avoid per-request cost.
@@ -46,15 +70,31 @@ public class JwtUtils {
         return cookie != null ? cookie.getValue() : null;
     }
 
-    // Creates a signed JWT and wraps it in a secure HttpOnly cookie.
+    /**
+     * Generates a new JWT token for the given authenticated user and wraps it
+     * in a secure, HttpOnly response cookie.
+     *
+     * <p>
+     * Cookie security attributes:
+     * <ul>
+     * <li>{@code HttpOnly} — prevents JavaScript access (XSS mitigation)</li>
+     * <li>{@code Secure} — cookie is only sent over HTTPS</li>
+     * <li>{@code SameSite=Strict} — cookie is never sent on cross-origin requests
+     * (CSRF mitigation)</li>
+     * <li>{@code Path=/api} — limits cookie scope to API endpoints</li>
+     * </ul>
+     *
+     * @param userPrincipal the authenticated user's details
+     * @return a {@link ResponseCookie} containing the signed JWT
+     */
     public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
         String jwt = generateTokenFromUsername(userPrincipal.getUsername());
         return ResponseCookie.from(jwtCookie, jwt)
                 .path("/api")
-                .maxAge(24 * 60 * 60)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
+                .maxAge(24 * 60 * 60) // Cookie valid for 24 hours
+                .httpOnly(true) // Not accessible via JavaScript (XSS protection)
+                .secure(true) // Transmitted only over HTTPS
+                .sameSite("Strict") // Never sent on cross-origin requests (CSRF protection)
                 .build();
     }
 
@@ -62,7 +102,7 @@ public class JwtUtils {
     public ResponseCookie getCleanJwtCookie() {
         return ResponseCookie.from(jwtCookie, "")
                 .path("/api")
-                .maxAge(0)
+                .maxAge(0) // Instructs the browser to delete the cookie
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")

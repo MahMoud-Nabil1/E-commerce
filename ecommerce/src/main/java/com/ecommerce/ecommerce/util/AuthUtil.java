@@ -9,36 +9,40 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
+/**
+ * Utility class to extract authenticated user details from the security
+ * context.
+ */
 @Component
 public class AuthUtil {
 
     @Autowired
     UserRepository userRepository;
 
-    // Returns the authenticated user's email address.
-    public String loggedInEmail(){
+    public String loggedInEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + authentication.getName()));
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "User Not Found with username: " + authentication.getName()));
 
         return user.getEmail();
     }
 
-    // Returns the authenticated user's database ID.
-    public Long loggedInUserId(){
+    public Long loggedInUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + authentication.getName()));
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "User Not Found with username: " + authentication.getName()));
 
         return user.getUserId();
     }
 
-    // Returns the full User entity for the authenticated user.
-    public User loggedInUser(){
+    public User loggedInUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + authentication.getName()));
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "User Not Found with username: " + authentication.getName()));
         return user;
     }
 }

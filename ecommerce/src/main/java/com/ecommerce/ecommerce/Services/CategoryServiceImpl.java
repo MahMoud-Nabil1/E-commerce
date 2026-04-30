@@ -17,8 +17,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Implementation of the CategoryService handling the core category business
+ * logic.
+ */
 @Service
-public class CategoryServiceImpl implements CategoryService{
+public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -71,7 +75,7 @@ public class CategoryServiceImpl implements CategoryService{
     @Override
     public CategoryDTO deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category","categoryId",categoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
 
         categoryRepository.delete(category);
         return modelMapper.map(category, CategoryDTO.class);
@@ -81,7 +85,7 @@ public class CategoryServiceImpl implements CategoryService{
     @Override
     public CategoryDTO updateCategory(CategoryDTO categoryDTO, Long categoryId) {
         Category savedCategory = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category","categoryId",categoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
 
         savedCategory.setCategoryName(categoryDTO.getCategoryName());
 

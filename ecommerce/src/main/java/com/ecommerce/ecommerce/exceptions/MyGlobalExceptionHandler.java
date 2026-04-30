@@ -1,7 +1,6 @@
 // Catches all exceptions globally and returns consistent JSON errors.
 package com.ecommerce.ecommerce.exceptions;
 
-
 import com.ecommerce.ecommerce.Payload.APIResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,10 +12,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Global exception handler that intercepts application exceptions and maps them
+ * to standardized HTTP responses, ensuring consistent error formats for the
+ * client.
+ */
 @RestControllerAdvice
 public class MyGlobalExceptionHandler {
 
-    // Returns field-level validation errors as a map (e.g. {"name": "too short"}).
+    // Handles validation errors (e.g., @NotBlank, @Size) and returns a map of
+    // field-specific error messages
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> myMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         Map<String, String> response = new HashMap<>();

@@ -39,7 +39,7 @@ public class CategoryController {
      * What it returns: The saved CategoryDTO object including its generated ID with 201 Created.
      */
     @PostMapping("/admin/categories")
-    public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryDTO categoryDTO){
+    public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
         CategoryDTO savedCategoryDTO = categoryService.createCategory(categoryDTO);
         return new ResponseEntity<>(savedCategoryDTO, HttpStatus.CREATED);
     }
@@ -50,7 +50,7 @@ public class CategoryController {
      * What it returns: The deleted CategoryDTO object as confirmation with 200 OK.
      */
     @DeleteMapping("/admin/categories/{categoryId}")
-    public ResponseEntity<CategoryDTO> deleteCategory(@PathVariable Long categoryId){
+    public ResponseEntity<CategoryDTO> deleteCategory(@PathVariable Long categoryId) {
         CategoryDTO deletedCategory = categoryService.deleteCategory(categoryId);
         return new ResponseEntity<>(deletedCategory, HttpStatus.OK);
     }
@@ -62,7 +62,7 @@ public class CategoryController {
      */
     @PutMapping("/admin/categories/{categoryId}")
     public ResponseEntity<CategoryDTO> updateCategory(@Valid @RequestBody CategoryDTO categoryDTO,
-                                                      @PathVariable Long categoryId){
+            @PathVariable Long categoryId) {
         CategoryDTO savedCategoryDTO = categoryService.updateCategory(categoryDTO, categoryId);
         return new ResponseEntity<>(savedCategoryDTO, HttpStatus.OK);
     }

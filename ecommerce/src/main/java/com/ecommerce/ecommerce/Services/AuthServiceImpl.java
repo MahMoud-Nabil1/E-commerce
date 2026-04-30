@@ -28,6 +28,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of the {@link AuthService} interface providing authentication,
+ * registration, and user management business logic.
+ *
+ * <p>
+ * This service is responsible for:
+ * <ul>
+ * <li>Authenticating users via the Spring Security
+ * {@link AuthenticationManager}</li>
+ * <li>Creating new user accounts with encoded passwords and resolved roles</li>
+ * <li>Generating and clearing JWT cookies for stateless session management</li>
+ * <li>Extracting the currently authenticated user's profile from the security
+ * context</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Design note:</strong> This service intentionally does <em>not</em>
+ * return {@link org.springframework.http.ResponseEntity} — HTTP-layer concerns
+ * are the responsibility of the controller.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -38,7 +59,19 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
-    // Verifies credentials, sets security context, returns JWT cookie.
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Flow:
+     * <ol>
+     * <li>Authenticate credentials via the {@link AuthenticationManager}</li>
+     * <li>Inject the resulting {@link Authentication} into the
+     * {@link SecurityContextHolder}</li>
+     * <li>Generate a signed JWT and wrap it in an HttpOnly cookie</li>
+     * <li>Build and return the user info response alongside the cookie</li>
+     * </ol>
+     */
     @Override
     public AuthenticationResult login(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
@@ -46,7 +79,8 @@ public class AuthServiceImpl implements AuthService {
                         loginRequest.getUsername(),
                         loginRequest.getPassword()));
 
-        // Required so downstream code can access the authenticated user.
+        // Inject authenticated principal into the SecurityContext for the current
+        // request
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -60,7 +94,15 @@ public class AuthServiceImpl implements AuthService {
         return new AuthenticationResult(jwtCookie, response);
     }
 
-    // Creates a new user with hashed password and resolved roles.
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Validates uniqueness of username and email before persisting the new user.
+     * Passwords are hashed with the configured {@link PasswordEncoder} (BCrypt)
+     * before being stored.
+     * </p>
+     */
     @Override
     public MessageResponse register(RegisterRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
@@ -120,14 +162,29 @@ public class AuthServiceImpl implements AuthService {
         return "Sellers list logic will be implemented here";
     }
 
-    // Looks up a Role entity from DB by its enum value.
+    // ======================== Private Helpers ========================
+
+    /**
+     * Resolves a {@link Role} entity from the database by its {@link AppRole} enum
+     * value.
+     *
+     * @param appRole the role enum to look up
+     * @return the corresponding {@link Role} entity
+     * @throws RuntimeException if the role does not exist in the database
+     */
     private Role resolveRole(AppRole appRole) {
         return roleRepository.findByRoleName(appRole)
                 .orElseThrow(() -> new RuntimeException(
                         "Error: Role is not found — " + appRole.name()));
     }
 
-    // Converts authorities to simple role name strings.
+    /**
+     * Extracts a list of role name strings from the authenticated user's
+     * authorities.
+     *
+     * @param userDetails the authenticated user's details
+     * @return a list of role names (e.g., {@code ["ROLE_USER", "ROLE_ADMIN"]})
+     */
     private List<String> extractRoleNames(UserDetailsImpl userDetails) {
         return userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
