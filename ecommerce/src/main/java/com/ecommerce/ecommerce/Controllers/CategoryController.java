@@ -1,3 +1,4 @@
+// HTTP endpoints for category browsing and admin management.
 package com.ecommerce.ecommerce.Controllers;
 
 import com.ecommerce.ecommerce.config.AppConstants;
@@ -10,10 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * REST Controller for managing category-related endpoints.
- * Handles both public browsing and admin-level CRUD operations.
- */
 @RestController
 @RequestMapping("/api")
 public class CategoryController {
@@ -21,7 +18,11 @@ public class CategoryController {
     @Autowired
     private CategoryService categoryService;
 
-    // Retrieves a paginated and sorted list of all categories (Public access)
+    /**
+     * What it does: Lists all categories with support for pagination and sorting. Publicly accessible.
+     * What it expects: Optional query parameters: 'pageNumber', 'pageSize', 'sortBy', and 'sortOrder'.
+     * What it returns: A CategoryResponse containing pagination metadata and a list of CategoryDTO objects with 200 OK.
+     */
     @GetMapping("/public/categories")
     public ResponseEntity<CategoryResponse> getAllCategories(
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
@@ -32,21 +33,33 @@ public class CategoryController {
         return new ResponseEntity<>(categoryResponse, HttpStatus.OK);
     }
 
-    // Creates a new category (Admin access required)
+    /**
+     * What it does: Creates a new product category. Admin access only.
+     * What it expects: A CategoryDTO object in the JSON body containing category details.
+     * What it returns: The saved CategoryDTO object including its generated ID with 201 Created.
+     */
     @PostMapping("/admin/categories")
     public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryDTO categoryDTO){
         CategoryDTO savedCategoryDTO = categoryService.createCategory(categoryDTO);
         return new ResponseEntity<>(savedCategoryDTO, HttpStatus.CREATED);
     }
 
-    // Deletes an existing category by its ID (Admin access required)
+    /**
+     * What it does: Deletes an existing category by its ID. Admin access only.
+     * What it expects: The 'categoryId' as a URL path variable.
+     * What it returns: The deleted CategoryDTO object as confirmation with 200 OK.
+     */
     @DeleteMapping("/admin/categories/{categoryId}")
     public ResponseEntity<CategoryDTO> deleteCategory(@PathVariable Long categoryId){
         CategoryDTO deletedCategory = categoryService.deleteCategory(categoryId);
         return new ResponseEntity<>(deletedCategory, HttpStatus.OK);
     }
 
-    // Updates an existing category's details (Admin access required)
+    /**
+     * What it does: Updates an existing category's information (like its name). Admin access only.
+     * What it expects: The 'categoryId' in the URL path, and a CategoryDTO with updated data in the JSON body.
+     * What it returns: The updated CategoryDTO object with 200 OK.
+     */
     @PutMapping("/admin/categories/{categoryId}")
     public ResponseEntity<CategoryDTO> updateCategory(@Valid @RequestBody CategoryDTO categoryDTO,
                                                       @PathVariable Long categoryId){

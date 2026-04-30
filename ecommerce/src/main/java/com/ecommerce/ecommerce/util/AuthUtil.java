@@ -1,3 +1,4 @@
+// Extracts logged-in user details from Spring Security context.
 package com.ecommerce.ecommerce.util;
 
 import com.ecommerce.ecommerce.Models.User;
@@ -8,15 +9,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-/**
- * Utility class to extract authenticated user details from the security context.
- */
 @Component
 public class AuthUtil {
 
     @Autowired
     UserRepository userRepository;
 
+    // Returns the authenticated user's email address.
     public String loggedInEmail(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = userRepository.findByUsername(authentication.getName())
@@ -25,6 +24,7 @@ public class AuthUtil {
         return user.getEmail();
     }
 
+    // Returns the authenticated user's database ID.
     public Long loggedInUserId(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = userRepository.findByUsername(authentication.getName())
@@ -33,6 +33,7 @@ public class AuthUtil {
         return user.getUserId();
     }
 
+    // Returns the full User entity for the authenticated user.
     public User loggedInUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 

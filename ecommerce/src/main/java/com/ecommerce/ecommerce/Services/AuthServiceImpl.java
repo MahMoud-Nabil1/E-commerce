@@ -1,3 +1,4 @@
+// Login, registration, JWT cookie management, user profile retrieval.
 package com.ecommerce.ecommerce.Services;
 
 import com.ecommerce.ecommerce.Models.AppRole;
@@ -27,22 +28,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of the {@link AuthService} interface providing authentication,
- * registration, and user management business logic.
- *
- * <p>This service is responsible for:
- * <ul>
- *   <li>Authenticating users via the Spring Security {@link AuthenticationManager}</li>
- *   <li>Creating new user accounts with encoded passwords and resolved roles</li>
- *   <li>Generating and clearing JWT cookies for stateless session management</li>
- *   <li>Extracting the currently authenticated user's profile from the security context</li>
- * </ul>
- *
- * <p><strong>Design note:</strong> This service intentionally does <em>not</em>
- * return {@link org.springframework.http.ResponseEntity} — HTTP-layer concerns
- * are the responsibility of the controller.</p>
- */
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -53,31 +38,19 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Flow:
-     * <ol>
-     *   <li>Authenticate credentials via the {@link AuthenticationManager}</li>
-     *   <li>Inject the resulting {@link Authentication} into the {@link SecurityContextHolder}</li>
-     *   <li>Generate a signed JWT and wrap it in an HttpOnly cookie</li>
-     *   <li>Build and return the user info response alongside the cookie</li>
-     * </ol>
-     */
+    // Verifies credentials, sets security context, returns JWT cookie.
     @Override
     public AuthenticationResult login(LoginRequest loginRequest) {
-        // Delegate credential verification to Spring Security's AuthenticationManager
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
                         loginRequest.getPassword()));
 
-        // Inject authenticated principal into the SecurityContext for the current request
+        // Required so downstream code can access the authenticated user.
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-        // Generate a signed JWT wrapped in a secure HttpOnly cookie
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
 
         List<String> roles = extractRoleNames(userDetails);
@@ -87,38 +60,29 @@ public class AuthServiceImpl implements AuthService {
         return new AuthenticationResult(jwtCookie, response);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Validates uniqueness of username and email before persisting the new user.
-     * Passwords are hashed with the configured {@link PasswordEncoder} (BCrypt)
-     * before being stored.</p>
-     */
+    // Creates a new user with hashed password and resolved roles.
     @Override
     public MessageResponse register(RegisterRequest signUpRequest) {
-        // Guard: ensure username uniqueness
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            throw new RuntimeException("Error: Username is already taken!");
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Username is already taken!");
         }
 
-        // Guard: ensure email uniqueness
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            throw new RuntimeException("Error: Email is already in use!");
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Email is already in use!");
         }
 
         User user = new User();
         user.setUsername(signUpRequest.getUsername());
         user.setEmail(signUpRequest.getEmail());
 
-        // Hash the raw password before persistence — never store plaintext passwords
+        // Never store plaintext passwords.
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
 
-        // Resolve and assign roles
         Set<String> requestedRoles = signUpRequest.getRole();
         Set<Role> roles = new HashSet<>();
 
+        // Default to ROLE_USER when no role is specified.
         if (requestedRoles == null || requestedRoles.isEmpty()) {
-            // Default to ROLE_USER when no specific role is requested
             roles.add(resolveRole(AppRole.ROLE_USER));
         } else {
             requestedRoles.forEach(roleName -> {
@@ -136,9 +100,7 @@ public class AuthServiceImpl implements AuthService {
         return new MessageResponse("User registered successfully!");
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // Extracts user info from the current security context.
     @Override
     public UserInfoResponse getCurrentUserDetails(Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -146,44 +108,26 @@ public class AuthServiceImpl implements AuthService {
         return new UserInfoResponse(userDetails.getId(), userDetails.getUsername(), roles);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // Returns an empty cookie that clears the JWT on logout.
     @Override
     public ResponseCookie logoutUser() {
         return jwtUtils.getCleanJwtCookie();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // TODO: Implement seller-specific query with role filtering.
     @Override
     public Object getAllSellers(Pageable pageDetails) {
-        // TODO: Implement seller-specific query with role filtering
         return "Sellers list logic will be implemented here";
     }
 
-    // ======================== Private Helpers ========================
-
-    /**
-     * Resolves a {@link Role} entity from the database by its {@link AppRole} enum value.
-     *
-     * @param appRole the role enum to look up
-     * @return the corresponding {@link Role} entity
-     * @throws RuntimeException if the role does not exist in the database
-     */
+    // Looks up a Role entity from DB by its enum value.
     private Role resolveRole(AppRole appRole) {
         return roleRepository.findByRoleName(appRole)
                 .orElseThrow(() -> new RuntimeException(
                         "Error: Role is not found — " + appRole.name()));
     }
 
-    /**
-     * Extracts a list of role name strings from the authenticated user's authorities.
-     *
-     * @param userDetails the authenticated user's details
-     * @return a list of role names (e.g., {@code ["ROLE_USER", "ROLE_ADMIN"]})
-     */
+    // Converts authorities to simple role name strings.
     private List<String> extractRoleNames(UserDetailsImpl userDetails) {
         return userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())

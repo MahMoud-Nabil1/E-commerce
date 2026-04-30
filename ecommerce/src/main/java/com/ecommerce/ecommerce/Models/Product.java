@@ -1,3 +1,4 @@
+// DB entity: a sellable product with pricing, stock, and category.
 package com.ecommerce.ecommerce.Models;
 
 import jakarta.persistence.*;
@@ -9,10 +10,6 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-/**
- * Entity mapping for the 'products' table in the database.
- * Contains validation constraints and defines relationships with Categories and Users (Sellers).
- */
 @Entity
 @Data
 @NoArgsConstructor
@@ -37,16 +34,16 @@ public class Product {
     private Integer quantity;
     private double price;
     private double discount;
+    // Computed server-side: price minus discount percentage.
     private double specialPrice;
 
-    // Many products belong to one category
     @ManyToOne
     @JoinColumn(name = "category_id")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Category category;
 
-    // The seller who owns/listed this product
+    // The seller who listed this product.
     @ManyToOne
     @JoinColumn(name = "seller_id")
     @ToString.Exclude

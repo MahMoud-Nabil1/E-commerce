@@ -1,3 +1,4 @@
+// DB entity: application user with roles and addresses.
 package com.ecommerce.ecommerce.Models;
 
 import jakarta.persistence.*;
@@ -11,19 +12,6 @@ import lombok.NoArgsConstructor;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * JPA entity representing an application user.
- *
- * <p>Mapped to the {@code Users} table with unique constraints on both
- * {@code username} and {@code email} columns to prevent duplicate accounts.</p>
- *
- * <p>Passwords are stored as BCrypt hashes — the plaintext password is
- * never persisted. Roles are managed via a many-to-many join table
- * ({@code user_role}).</p>
- *
- * @see Role
- * @see AppRole
- */
 @Entity
 @Data
 @NoArgsConstructor
@@ -33,38 +21,42 @@ import java.util.Set;
         @UniqueConstraint(columnNames = "email")
 })
 public class User {
+    public java.util.List<Address> getAddresses() { return addresses; }
+    public void setAddresses(java.util.List<Address> addresses) { this.addresses = addresses; }
 
-    /** Auto-generated primary key. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
     private Long userId;
 
-    /** The user's unique login name (max 20 characters). */
     @NotBlank
     @Size(max = 20)
     @Column(name = "username")
     private String username;
 
-    /** The user's unique email address (max 50 characters). */
     @NotBlank
     @Size(max = 50)
     @Email
     @Column(name = "email")
     private String email;
 
-    /** The BCrypt-hashed password (max 120 characters to accommodate the hash). */
+    // Stores BCrypt hash, never plaintext.
     @NotBlank
     @Size(max = 120)
     @Column(name = "password")
     private String password;
 
-    /** The set of roles assigned to this user, loaded lazily via a join table. */
+    // Many-to-many via join table; loaded lazily for performance.
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_role",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    
+    
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private java.util.List<Address> addresses = new java.util.ArrayList<>();
 
     public User(String username, String email, String password) {
         this.username = username;

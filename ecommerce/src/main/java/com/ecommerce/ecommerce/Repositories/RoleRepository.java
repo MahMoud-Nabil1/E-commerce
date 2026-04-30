@@ -1,3 +1,4 @@
+// DB access for roles: resolves AppRole enum to DB entity.
 package com.ecommerce.ecommerce.Repositories;
 
 import com.ecommerce.ecommerce.Models.AppRole;
@@ -7,20 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/**
- * Spring Data JPA repository for {@link Role} entity persistence operations.
- *
- * <p>Used during registration to resolve {@link AppRole} enum values into
- * their corresponding database entities.</p>
- */
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Integer> {
 
-    /**
-     * Finds a role entity by its {@link AppRole} enum name.
-     *
-     * @param appRole the role enum value to look up (e.g., {@code ROLE_USER})
-     * @return an {@link Optional} containing the role, or empty if not found
-     */
+    // Used during registration and DB seeding to find/create roles.
     Optional<Role> findByRoleName(AppRole appRole);
 }

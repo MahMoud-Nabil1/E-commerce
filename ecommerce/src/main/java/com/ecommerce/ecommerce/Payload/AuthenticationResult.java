@@ -8,7 +8,7 @@ import org.springframework.http.ResponseCookie;
  * Internal transport object that bundles the JWT cookie with the user info
  * response after a successful authentication.
  *
- * <p>Used exclusively between the service and controller layers —
+ * <p>Used exclusively between the service and controller layers Ã¢â‚¬â€
  * never serialized directly into an HTTP response.</p>
  */
 @Data

@@ -1,8 +1,6 @@
+// Thrown for business rule violations (duplicates, empty carts, etc).
 package com.ecommerce.ecommerce.exceptions;
 
-/**
- * Custom runtime exception used to handle general API business logic errors.
- */
 public class APIException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 

@@ -1,3 +1,4 @@
+// DB entity: product grouping (e.g. "Electronics", "Clothing").
 package com.ecommerce.ecommerce.Models;
 
 import jakarta.persistence.*;
@@ -11,9 +12,6 @@ import lombok.ToString;
 
 import java.util.List;
 
-/**
- * Entity mapping for the 'categories' table in the database.
- */
 @Entity
 @Table(name = "categories")
 @Data
@@ -28,7 +26,7 @@ public class Category {
     @Size(min = 5, message = "Category name must contain atleast 5 characters")
     private String categoryName;
 
-    // Defines a one-to-many relationship with the Product entity
+    // Cascade ALL: deleting a category removes its products too.
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

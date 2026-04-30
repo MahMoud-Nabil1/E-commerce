@@ -16,7 +16,7 @@ public class LoginRequest {
     @NotBlank(message = "Username is required")
     private String username;
 
-    /** The user's plaintext password (never stored — compared against the BCrypt hash). */
+    /** The user's plaintext password (never stored Ã¢â‚¬â€ compared against the BCrypt hash). */
     @NotBlank(message = "Password is required")
     private String password;
 }

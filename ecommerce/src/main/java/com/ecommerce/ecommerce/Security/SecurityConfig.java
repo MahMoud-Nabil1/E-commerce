@@ -1,3 +1,4 @@
+// Security rules, role-based access, and DB seeder for default admin.
 package com.ecommerce.ecommerce.Security;
 
 import com.ecommerce.ecommerce.Models.AppRole;
@@ -26,21 +27,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import java.util.Set;
 
-/**
- * Central Spring Security configuration for the ShopFlow E-commerce
- * application.
- *
- * <p>
- * Key Security Decisions:
- * <ul>
- * <li>Stateless Session Management: No HTTP sessions are used; JWT is the
- * source of truth[cite: 87].</li>
- * <li>HttpOnly Cookies: JWT is transported via secure cookies to prevent XSS
- * attacks.</li>
- * <li>RBAC (Role-Based Access Control): Access is restricted based on USER and
- * ADMIN roles[cite: 315].</li>
- * </ul>
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -50,49 +36,49 @@ public class SecurityConfig {
     private final AuthEntryPointJwt unauthorizedHandler;
     private final AuthTokenFilter authTokenFilter;
 
+    // BCrypt for password hashing across the app.
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Exposes Spring's auth manager for use in AuthService.
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
+    // Defines URL access rules and stateless JWT session policy.
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CSRF disabled because JWT cookies handle protection.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> {
-                }) // Enable CORS with default settings or custom if needed
+                })
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                // No server-side sessions; JWT is the source of truth.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Public Endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/seller/**").hasAnyRole("ADMIN", "SELLER")
-
                         .requestMatchers("/api/public/**").permitAll()
-
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated());
 
+        // JWT filter runs before Spring's default username/password filter.
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Database Seeder: Automatically initializes roles and sample users on
-     * application startup.
-     */
+    // Seeds roles and default admin on first startup.
     @Bean
     public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository,
             PasswordEncoder passwordEncoder) {
         return args -> {
-            // 1. Initialize Roles if they don't exist
             Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
                     .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_USER)));
 
@@ -102,10 +88,8 @@ public class SecurityConfig {
             Role adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
                     .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_ADMIN)));
 
-            // 2. Pre-defined User Roles Sets
             Set<Role> adminRoles = Set.of(userRole, sellerRole, adminRole);
 
-            // 3. Initialize Admin User (Check by username with lowercase 'n')
             if (!userRepository.existsByUsername("admin")) {
                 User admin = new User("admin", "admin@shopflow.com", passwordEncoder.encode("Admin@123"));
                 admin.setRoles(adminRoles);
