@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start:frontend": "npm run dev",
+    "start:backend": "cd ../ecommerce && mvnw.cmd spring-boot:run",
+    "dev:full": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -19,6 +23,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^8.2.2",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

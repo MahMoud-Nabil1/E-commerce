@@ -129,6 +129,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public ProductDTO getProductById(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+
+        ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
+        productDTO.setImage(constructImageUrl(product.getImage()));
+        return productDTO;
+    }
+
+    @Override
     public ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy,
             String sortOrder) {
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")

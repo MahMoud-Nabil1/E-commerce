@@ -172,6 +172,17 @@ public class ProductController {
     }
 
     /**
+     * What it does: Fetches a single public product by its ID. Public access.
+     * What it expects: 'productId' as a path variable.
+     * What it returns: The ProductDTO with 200 OK.
+     */
+    @GetMapping("/public/products/{productId}")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long productId) {
+        ProductDTO productDTO = productService.getProductById(productId);
+        return new ResponseEntity<>(productDTO, HttpStatus.OK);
+    }
+
+    /**
      * What it does: Fetches all active products that belong to a specific category ID. Public access.
      * What it expects: 'categoryId' as a path variable, and optional pagination parameters.
      * What it returns: A ProductResponse with products filtered by that category, with 200 OK.
