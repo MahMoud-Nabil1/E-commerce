@@ -22,9 +22,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -158,8 +161,35 @@ public class AuthServiceImpl implements AuthService {
 
     // TODO: Implement seller-specific query with role filtering.
     @Override
+    @Transactional(readOnly = true)
     public Object getAllSellers(Pageable pageDetails) {
-        return "Sellers list logic will be implemented here";
+        // JOIN FETCH can't return Page directly — manually count + fetch.
+        long total = userRepository.countByRoleName(AppRole.ROLE_SELLER);
+        List<User> sellers = userRepository.findAllByRoleNameWithRoles(AppRole.ROLE_SELLER, pageDetails);
+
+        List<Map<String, Object>> content = sellers.stream().map(user -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", user.getUserId());
+            dto.put("username", user.getUsername());
+            dto.put("email", user.getEmail());
+            dto.put("roles", user.getRoles().stream()
+                    .map(role -> role.getRoleName().name())
+                    .collect(Collectors.toList()));
+            return dto;
+        }).collect(Collectors.toList());
+
+        int pageSize = pageDetails.getPageSize();
+        int pageNumber = pageDetails.getPageNumber();
+        long totalPages = (total + pageSize - 1) / pageSize;
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", content);
+        response.put("totalElements", total);
+        response.put("totalPages", totalPages);
+        response.put("pageNumber", pageNumber);
+        response.put("pageSize", pageSize);
+        response.put("lastPage", pageNumber >= totalPages - 1);
+        return response;
     }
 
     // ======================== Private Helpers ========================

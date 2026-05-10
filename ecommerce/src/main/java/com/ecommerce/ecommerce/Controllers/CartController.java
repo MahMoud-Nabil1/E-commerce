@@ -70,6 +70,12 @@ public class CartController {
     public ResponseEntity<CartDTO> getCartById(){
         String emailId = authUtil.loggedInEmail();
         Cart cart = cartRepository.findCartByEmail(emailId);
+
+        // New users have no cart yet — return an empty cart instead of crashing
+        if (cart == null) {
+            return new ResponseEntity<>(new CartDTO(), HttpStatus.OK);
+        }
+
         Long cartId = cart.getCartId();
         CartDTO cartDTO = cartService.getCart(emailId, cartId);
         return new ResponseEntity<CartDTO>(cartDTO, HttpStatus.OK);

@@ -1,0 +1,311 @@
+/* ===== Deals Page ===== */
+
+.deals-page {
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+/* ── Hero ── */
+.deals-hero {
+  background: linear-gradient(135deg, #1a0533 0%, #031636 50%, #0d2a5e 100%);
+  padding: 52px 0 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+.deals-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 50%, rgba(38, 77, 217, 0.25) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.deals-hero__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.deals-hero__overline {
+  color: #f5c842;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.deals-hero__title {
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.deals-hero__sub {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+.deals-hero__stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 20px 28px;
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.deals-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.deals-stat__value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #f5c842;
+  line-height: 1;
+}
+
+.deals-stat__label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.deals-stat--divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Layout ── */
+.deals-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 40px;
+  padding-top: 40px;
+  padding-bottom: 64px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .deals-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .deals-hero__stats {
+    display: none;
+  }
+}
+
+/* ── Sidebar ── */
+.deals-sidebar {
+  position: sticky;
+  top: calc(var(--navbar-height) + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.deals-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deals-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  margin-bottom: 6px;
+}
+
+.deals-filter-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.deals-filter-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.deals-filter-item:hover {
+  background: var(--surface-container);
+}
+
+.deals-filter-item--active {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  font-weight: 700;
+}
+
+/* ── Main ── */
+.deals-main {
+  min-width: 0;
+}
+
+/* Empty state */
+.deals-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  color: var(--on-surface-variant);
+  gap: 12px;
+  text-align: center;
+}
+
+.deals-empty p {
+  font-size: 15px;
+}
+
+/* Status */
+.deals-status {
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* Reuse skeleton + pagination from ProductsPage */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.skeleton-card {
+  height: 280px;
+  border-radius: 20px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-container) 25%,
+    var(--surface-container-high) 50%,
+    var(--surface-container) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.pagination__btn {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1.5px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface-container-lowest);
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.pagination__btn:hover:not(:disabled) {
+  background: var(--surface-container);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.pagination__btn--active {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.pagination__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Shared with ProductsPage */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.section-overline {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status-error {
+  color: var(--error);
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background: var(--secondary-container);
+}
+
+.btn-ghost {
+  padding: 8px 16px;
+  border: 1.5px solid var(--outline-variant);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-ghost:hover {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
