@@ -1,4 +1,4 @@
-package com.ecommerce.ecommerce.Config;
+package com.ecommerce.ecommerce.config;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.context.annotation.Configuration;
