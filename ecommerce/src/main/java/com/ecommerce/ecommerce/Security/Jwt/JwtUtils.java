@@ -91,10 +91,10 @@ public class JwtUtils {
         String jwt = generateTokenFromUsername(userPrincipal.getUsername());
         return ResponseCookie.from(jwtCookie, jwt)
                 .path("/api")
-                .maxAge(24 * 60 * 60) // Cookie valid for 24 hours
-                .httpOnly(true) // Not accessible via JavaScript (XSS protection)
-                .secure(true) // Transmitted only over HTTPS
-                .sameSite("Strict") // Never sent on cross-origin requests (CSRF protection)
+                .maxAge(24 * 60 * 60)
+                .httpOnly(true)
+                .secure(false)       // false for HTTP localhost dev
+                .sameSite("Lax")     // Lax works with Vite proxy over HTTP
                 .build();
     }
 
@@ -102,10 +102,10 @@ public class JwtUtils {
     public ResponseCookie getCleanJwtCookie() {
         return ResponseCookie.from(jwtCookie, "")
                 .path("/api")
-                .maxAge(0) // Instructs the browser to delete the cookie
+                .maxAge(0)
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
+                .secure(false)
+                .sameSite("Lax")
                 .build();
     }
 

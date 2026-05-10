@@ -62,7 +62,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/seller/**").hasAnyRole("ADMIN", "SELLER")
+                        // Sellers only — admins manage via /api/admin/**, not /api/seller/**
+                        .requestMatchers("/api/seller/**").hasRole("SELLER")
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -74,7 +75,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Seeds roles and default admin on first startup.
+    // Seeds roles, default admin, and hardcoded super admin on first startup.
     @Bean
     public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository,
             PasswordEncoder passwordEncoder) {
@@ -88,13 +89,43 @@ public class SecurityConfig {
             Role adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
                     .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_ADMIN)));
 
-            Set<Role> adminRoles = Set.of(userRole, sellerRole, adminRole);
+            // Admins are NOT sellers — they manage the platform, not a store.
+            Set<Role> adminRoles = Set.of(userRole, adminRole);
 
             if (!userRepository.existsByUsername("admin")) {
                 User admin = new User("admin", "admin@shopflow.com", passwordEncoder.encode("Admin@123"));
                 admin.setRoles(adminRoles);
                 userRepository.save(admin);
                 System.out.println(">> Default Admin created: admin / Admin@123");
+            } else {
+                // Fix existing admin account if it was incorrectly given ROLE_SELLER.
+                // Use JOIN FETCH to avoid LazyInitializationException outside a session.
+                userRepository.findByUsernameWithRoles("admin").ifPresent(admin -> {
+                    if (admin.getRoles().contains(sellerRole)) {
+                        admin.getRoles().remove(sellerRole);
+                        userRepository.save(admin);
+                        System.out.println(">> Fixed admin roles: removed ROLE_SELLER");
+                    }
+                });
+            }
+
+            // Hardcoded super admin — always present, credentials never change via API.
+            if (!userRepository.existsByUsername("superadmin")) {
+                User superAdmin = new User("superadmin", "superadmin@shopflow.com",
+                        passwordEncoder.encode("SuperAdmin@999"));
+                superAdmin.setRoles(adminRoles);
+                userRepository.save(superAdmin);
+                System.out.println(">> Super Admin created: superadmin / SuperAdmin@999");
+            } else {
+                // Fix existing superadmin account if it was incorrectly given ROLE_SELLER.
+                // Use JOIN FETCH to avoid LazyInitializationException outside a session.
+                userRepository.findByUsernameWithRoles("superadmin").ifPresent(superAdmin -> {
+                    if (superAdmin.getRoles().contains(sellerRole)) {
+                        superAdmin.getRoles().remove(sellerRole);
+                        userRepository.save(superAdmin);
+                        System.out.println(">> Fixed superadmin roles: removed ROLE_SELLER");
+                    }
+                });
             }
         };
     }
