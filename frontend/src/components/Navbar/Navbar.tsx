@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import './Navbar.css';
 
 interface NavItem {
@@ -11,61 +12,71 @@ const navItems: NavItem[] = [
   { label: 'Products', path: '/products' },
   { label: 'Categories', path: '/categories' },
   { label: 'Deals', path: '/deals' },
-  { label: 'Support', path: '/support' },
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const { user, isAuthenticated, logout, cartCount } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  // Track scroll position to apply elevated navbar style
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Scroll shadow
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 8);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    setSearchOpen(false);
+    setUserMenuOpen(false);
   }, [location.pathname]);
 
-  // Focus search input when opened
+  // Close user dropdown on outside click
   useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Close search on Escape
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSearchOpen(false);
-        setMobileMenuOpen(false);
+    function handleClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
       }
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Prevent body scroll when mobile menu is open
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Lock body scroll when mobile menu open
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [mobileMenuOpen]);
 
+  async function handleLogout() {
+    setUserMenuOpen(false);
+    await logout();
+    navigate('/');
+  }
+
+  const initials = user?.username?.slice(0, 2).toUpperCase() ?? '';
+
   return (
     <>
       <nav
-        id="main-navbar"
         className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}
         role="navigation"
         aria-label="Main navigation"
@@ -82,16 +93,14 @@ export default function Navbar() {
             <span className="navbar__brand-text">E-Commerce</span>
           </NavLink>
 
-          {/* Desktop Nav Links */}
+          {/* Desktop nav links */}
           <ul className="navbar__links" role="menubar">
             {navItems.map((item) => (
               <li key={item.path} role="none">
                 <NavLink
                   to={item.path}
                   role="menuitem"
-                  className={({ isActive }) =>
-                    `navbar__link ${isActive ? 'navbar__link--active' : ''}`
-                  }
+                  className={({ isActive }) => `navbar__link${isActive ? ' navbar__link--active' : ''}`}
                 >
                   {item.label}
                 </NavLink>
@@ -99,45 +108,15 @@ export default function Navbar() {
             ))}
           </ul>
 
-          {/* Right Actions */}
+          {/* Right actions */}
           <div className="navbar__actions">
-            {/* Search Bar (Desktop) */}
-            <div className={`navbar__search ${searchOpen ? 'navbar__search--expanded' : ''}`}>
-              <button
-                type="button"
-                className="navbar__search-toggle"
-                onClick={() => setSearchOpen(!searchOpen)}
-                aria-label="Toggle search"
-                aria-expanded={searchOpen}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-              </button>
-              <div className="navbar__search-field">
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  id="navbar-search"
-                  className="navbar__search-input"
-                  placeholder="Search inventory..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search inventory"
-                />
-              </div>
-            </div>
-
-            {/* Desktop Always-visible Search */}
+            {/* Desktop search */}
             <div className="navbar__search-desktop">
               <svg className="navbar__search-desktop-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
               </svg>
               <input
                 type="search"
-                id="navbar-search-desktop"
                 className="navbar__search-desktop-input"
                 placeholder="Search inventory..."
                 aria-label="Search inventory"
@@ -145,40 +124,79 @@ export default function Navbar() {
             </div>
 
             {/* Cart */}
-            <button type="button" className="navbar__icon-btn" id="navbar-cart-btn" aria-label="Shopping cart">
+            <NavLink to="/cart" className="navbar__icon-btn" aria-label={`Shopping cart${cartCount > 0 ? `, ${cartCount} items` : ''}`}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="8" cy="21" r="1" />
-                <circle cx="19" cy="21" r="1" />
+                <circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" />
                 <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
               </svg>
-              <span className="navbar__badge" aria-label="3 items in cart">3</span>
-            </button>
+              {cartCount > 0 && (
+                <span className="navbar__badge" aria-hidden="true">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </NavLink>
 
-            {/* Notifications */}
-            <button type="button" className="navbar__icon-btn" id="navbar-notifications-btn" aria-label="Notifications">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-              </svg>
-              <span className="navbar__dot" aria-hidden="true"></span>
-            </button>
+            {/* User — authenticated */}
+            {isAuthenticated ? (
+              <div className="navbar__user-menu" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="navbar__avatar-btn"
+                  onClick={() => setUserMenuOpen((o) => !o)}
+                  aria-label="User menu"
+                  aria-expanded={userMenuOpen}
+                  aria-haspopup="menu"
+                >
+                  <div className="navbar__avatar navbar__avatar--filled">
+                    {initials}
+                  </div>
+                </button>
 
-            {/* User Avatar */}
-            <button type="button" className="navbar__avatar-btn" id="navbar-user-btn" aria-label="User account">
-              <div className="navbar__avatar">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+                {userMenuOpen && (
+                  <div className="navbar__dropdown" role="menu" aria-label="User menu">
+                    <div className="navbar__dropdown-header">
+                      <p className="navbar__dropdown-name">{user?.username}</p>
+                      <p className="navbar__dropdown-email">{user?.email}</p>
+                    </div>
+                    <div className="navbar__dropdown-divider" />
+                    <NavLink to="/cart" className="navbar__dropdown-item" role="menuitem">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" />
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                      </svg>
+                      Cart
+                      {cartCount > 0 && <span className="navbar__dropdown-badge">{cartCount}</span>}
+                    </NavLink>
+                    <div className="navbar__dropdown-divider" />
+                    <button
+                      type="button"
+                      className="navbar__dropdown-item navbar__dropdown-item--danger"
+                      role="menuitem"
+                      onClick={handleLogout}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                      </svg>
+                      Sign out
+                    </button>
+                  </div>
+                )}
               </div>
-            </button>
+            ) : (
+              /* User — guest */
+              <div className="navbar__auth-links">
+                <NavLink to="/login" className="navbar__auth-link">Sign in</NavLink>
+                <NavLink to="/register" className="navbar__auth-link navbar__auth-link--primary">Register</NavLink>
+              </div>
+            )}
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile hamburger */}
             <button
               type="button"
-              className={`navbar__hamburger ${mobileMenuOpen ? 'navbar__hamburger--active' : ''}`}
-              id="navbar-mobile-toggle"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`navbar__hamburger${mobileMenuOpen ? ' navbar__hamburger--active' : ''}`}
+              onClick={() => setMobileMenuOpen((o) => !o)}
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}
               aria-controls="navbar-mobile-menu"
@@ -191,44 +209,36 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile overlay */}
       <div
-        className={`navbar__overlay ${mobileMenuOpen ? 'navbar__overlay--visible' : ''}`}
+        className={`navbar__overlay${mobileMenuOpen ? ' navbar__overlay--visible' : ''}`}
         onClick={() => setMobileMenuOpen(false)}
         aria-hidden="true"
       />
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile drawer */}
       <aside
         id="navbar-mobile-menu"
-        className={`navbar__mobile-menu ${mobileMenuOpen ? 'navbar__mobile-menu--open' : ''}`}
+        className={`navbar__mobile-menu${mobileMenuOpen ? ' navbar__mobile-menu--open' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label="Mobile navigation"
       >
-        {/* Mobile Search */}
+        {/* Mobile search */}
         <div className="navbar__mobile-search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
-          <input
-            type="search"
-            className="navbar__mobile-search-input"
-            placeholder="Search inventory..."
-            aria-label="Search inventory"
-          />
+          <input type="search" className="navbar__mobile-search-input" placeholder="Search inventory..." aria-label="Search inventory" />
         </div>
 
-        {/* Mobile Nav Links */}
+        {/* Mobile nav links */}
         <ul className="navbar__mobile-links">
           {navItems.map((item) => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                className={({ isActive }) =>
-                  `navbar__mobile-link ${isActive ? 'navbar__mobile-link--active' : ''}`
-                }
+                className={({ isActive }) => `navbar__mobile-link${isActive ? ' navbar__mobile-link--active' : ''}`}
               >
                 {item.label}
               </NavLink>
@@ -236,31 +246,54 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* Mobile Actions */}
+        {/* Mobile actions */}
         <div className="navbar__mobile-actions">
           <NavLink to="/cart" className="navbar__mobile-action">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="8" cy="21" r="1" />
-              <circle cx="19" cy="21" r="1" />
+              <circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" />
               <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
             </svg>
             <span>Cart</span>
-            <span className="navbar__mobile-badge">3</span>
+            {cartCount > 0 && <span className="navbar__mobile-badge">{cartCount}</span>}
           </NavLink>
-          <NavLink to="/notifications" className="navbar__mobile-action">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-            </svg>
-            <span>Notifications</span>
-          </NavLink>
-          <NavLink to="/account" className="navbar__mobile-action">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span>Account</span>
-          </NavLink>
+
+          {isAuthenticated ? (
+            <>
+              <div className="navbar__mobile-user">
+                <div className="navbar__avatar navbar__avatar--filled navbar__avatar--sm">{initials}</div>
+                <div>
+                  <p className="navbar__mobile-username">{user?.username}</p>
+                  <p className="navbar__mobile-email">{user?.email}</p>
+                </div>
+              </div>
+              <button type="button" className="navbar__mobile-action navbar__mobile-action--danger" onClick={handleLogout}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span>Sign out</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" className="navbar__mobile-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                  <polyline points="10 17 15 12 10 7" />
+                  <line x1="15" y1="12" x2="3" y2="12" />
+                </svg>
+                <span>Sign in</span>
+              </NavLink>
+              <NavLink to="/register" className="navbar__mobile-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Register</span>
+              </NavLink>
+            </>
+          )}
         </div>
       </aside>
     </>

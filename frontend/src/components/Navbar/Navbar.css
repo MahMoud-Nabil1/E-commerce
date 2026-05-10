@@ -319,25 +319,11 @@
   100% { transform: scale(1); }
 }
 
-/* Notification Dot */
-.navbar__dot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 7px;
-  height: 7px;
-  background: var(--error);
-  border-radius: 50%;
-  border: 1.5px solid var(--surface-container-lowest);
-  pointer-events: none;
-}
-
 @media (max-width: 768px) {
   .navbar__icon-btn {
     display: none;
   }
 }
-
 /* ---- User Avatar ---- */
 .navbar__avatar-btn {
   display: flex;
@@ -583,4 +569,187 @@
   text-align: center;
   border-radius: var(--rounded-full);
   padding: 0 6px;
+}
+
+/* ===== Auth-aware additions ===== */
+
+/* ── Auth links (guest state) ── */
+.navbar__auth-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .navbar__auth-links {
+    display: none;
+  }
+}
+
+.navbar__auth-link {
+  padding: 7px 16px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--on-surface-variant);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.navbar__auth-link:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.navbar__auth-link--primary {
+  background: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.navbar__auth-link--primary:hover {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+/* ── Filled avatar (shows initials) ── */
+.navbar__avatar--filled {
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-color: transparent;
+}
+
+.navbar__avatar--sm {
+  width: 36px;
+  height: 36px;
+  font-size: 0.7rem;
+}
+
+/* ── User dropdown ── */
+.navbar__user-menu {
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .navbar__user-menu {
+    display: none;
+  }
+}
+
+.navbar__dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  z-index: 200;
+  animation: dropdown-in 0.15s ease-out;
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.navbar__dropdown-header {
+  padding: 14px 16px 12px;
+}
+
+.navbar__dropdown-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.navbar__dropdown-email {
+  font-size: 0.78rem;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+}
+
+.navbar__dropdown-divider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 0;
+}
+
+.navbar__dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--on-surface);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  text-align: left;
+}
+
+.navbar__dropdown-item:hover {
+  background: var(--surface-container);
+}
+
+.navbar__dropdown-item--danger {
+  color: var(--error);
+}
+
+.navbar__dropdown-item--danger:hover {
+  background: var(--error-container);
+}
+
+.navbar__dropdown-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  background: var(--secondary);
+  color: var(--on-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+/* ── Mobile user info ── */
+.navbar__mobile-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--rounded-lg);
+  background: var(--surface-container);
+  margin-bottom: 4px;
+}
+
+.navbar__mobile-username {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.navbar__mobile-email {
+  font-size: 0.75rem;
+  color: var(--on-surface-variant);
+}
+
+.navbar__mobile-action--danger {
+  color: var(--error) !important;
+}
+
+.navbar__mobile-action--danger:hover {
+  background: var(--error-container) !important;
 }
