@@ -7,7 +7,7 @@
     "dev": "vite",
     "start:frontend": "npm run dev",
     "start:backend": "cd ../ecommerce && mvnw.cmd spring-boot:run",
-    "dev:full": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
