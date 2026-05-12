@@ -17,7 +17,7 @@ import axios, {
 } from "axios";
 import * as SecureStore from "expo-secure-store";
 
-export const BASE_URL = "http://localhost:8080/api";
+export const BASE_URL = "http://192.168.1.6:8080/api";
 export const TOKEN_KEY = "auth_token";
 /** Name of the JWT cookie the backend sets — must match spring.app.jwtCookieName */
 const JWT_COOKIE_NAME = "ecommerce-cookie";
