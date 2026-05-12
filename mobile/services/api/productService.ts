@@ -22,7 +22,7 @@ function buildQuery(params: Record<string, string | number | undefined>): string
   return str ? `?${str}` : "";
 }
 
-type ProductInput = Omit<ProductDTO, "productId" | "image" | "specialPrice">;
+type ProductInput = Omit<ProductDTO, "productId" | "image" | "specialPrice"> & { categoryId?: number };
 
 /**
  * Product endpoints.

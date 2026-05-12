@@ -60,6 +60,7 @@ export type ProductDTO = {
   price: number;
   discount: number;
   specialPrice: number;
+  categoryId: number;
 };
 
 export type ProductResponse = PaginatedResponse<ProductDTO>;
