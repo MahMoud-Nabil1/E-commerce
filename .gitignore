@@ -39,12 +39,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Environment Variables
+# Environment Variables — never commit secrets
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
+.env.*.local
 
 # ==============================
 # Java / Spring Boot (Maven)
