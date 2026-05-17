@@ -368,3 +368,83 @@
 .auth-submit--seller:hover:not(:disabled) {
   background: #0a3d26;
 }
+
+/* ── OAuth2 social buttons ── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.auth-divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--outline-variant);
+}
+
+.auth-divider__text {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.auth-social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.auth-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.auth-social-btn:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.auth-social-btn:active {
+  transform: scale(0.97);
+}
+
+/* Google — white background, dark text, brand border on hover */
+.auth-social-btn--google {
+  color: #3c4043;
+  background: #ffffff;
+  border-color: #dadce0;
+}
+
+.auth-social-btn--google:hover {
+  border-color: #4285F4;
+  background: #f8f9ff;
+}
+
+/* GitHub — dark background, white text */
+.auth-social-btn--github {
+  color: #ffffff;
+  background: #24292e;
+  border-color: #24292e;
+}
+
+.auth-social-btn--github:hover {
+  background: #1a1e22;
+  border-color: #1a1e22;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}

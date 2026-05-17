@@ -100,11 +100,19 @@ export interface OrderResponse {
 
 // ── API Client ────────────────────────────────────────────────────────────────
 // Auth uses HttpOnly cookies set by the backend — no localStorage token needed.
-// All requests go through Vite's /api proxy → http://localhost:8080/api
+// In dev: all requests go through Vite's /api proxy → http://localhost:8080/api
+// In production: VITE_API_BASE_URL points directly to the backend Render URL
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 class ApiClient {
   private getHeaders(): HeadersInit {
     return { 'Content-Type': 'application/json' };
+  }
+
+  // Prepends the backend base URL so the same code works in dev (proxy) and prod (absolute URL).
+  private url(path: string): string {
+    return `${API_BASE}${path}`;
   }
 
   private async handle<T>(res: Response): Promise<T> {
@@ -135,7 +143,7 @@ class ApiClient {
 
   /** POST /api/auth/login — sets HttpOnly JWT cookie, returns UserInfoResponse */
   async login(username: string, password: string): Promise<LoginResponse> {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(this.url('/api/auth/login'), {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include', // send & receive cookies
@@ -151,7 +159,7 @@ class ApiClient {
     password: string,
     role: Set<string> = new Set(['user']),
   ): Promise<{ message: string }> {
-    const res = await fetch('/api/auth/signup', {
+    const res = await fetch(this.url('/api/auth/signup'), {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ username, email, password, role: Array.from(role) }),
@@ -161,7 +169,7 @@ class ApiClient {
 
   /** POST /api/auth/signout — clears the JWT cookie */
   async signout(): Promise<{ message: string }> {
-    const res = await fetch('/api/auth/signout', {
+    const res = await fetch(this.url('/api/auth/signout'), {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -171,7 +179,7 @@ class ApiClient {
 
   /** GET /api/auth/user — returns current user details (requires valid cookie) */
   async getUser(): Promise<User> {
-    const res = await fetch('/api/auth/user', {
+    const res = await fetch(this.url('/api/auth/user'), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -181,7 +189,7 @@ class ApiClient {
   // ── Cart ──────────────────────────────────────────────────────────────────
 
   async getCart(): Promise<Cart> {
-    const res = await fetch('/api/carts/users/cart', {
+    const res = await fetch(this.url('/api/carts/users/cart'), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -189,7 +197,7 @@ class ApiClient {
   }
 
   async addToCart(productId: number, quantity: number): Promise<Cart> {
-    const res = await fetch(`/api/carts/products/${productId}/quantity/${quantity}`, {
+    const res = await fetch(this.url(`/api/carts/products/${productId}/quantity/${quantity}`), {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -198,7 +206,7 @@ class ApiClient {
   }
 
   async updateCartItem(productId: number, operation: 'add' | 'delete'): Promise<Cart> {
-    const res = await fetch(`/api/cart/products/${productId}/quantity/${operation}`, {
+    const res = await fetch(this.url(`/api/cart/products/${productId}/quantity/${operation}`), {
       method: 'PUT',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -207,7 +215,7 @@ class ApiClient {
   }
 
   async removeFromCart(cartId: number, productId: number): Promise<string> {
-    const res = await fetch(`/api/carts/${cartId}/product/${productId}`, {
+    const res = await fetch(this.url(`/api/carts/${cartId}/product/${productId}`), {
       method: 'DELETE',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -218,7 +226,7 @@ class ApiClient {
   // ── Admin: Categories ─────────────────────────────────────────────────────
 
   async adminGetCategories(page = 0, size = 20): Promise<CategoryResponse> {
-    const res = await fetch(`/api/public/categories?pageNumber=${page}&pageSize=${size}`, {
+    const res = await fetch(this.url(`/api/public/categories?pageNumber=${page}&pageSize=${size}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -226,7 +234,7 @@ class ApiClient {
   }
 
   async adminCreateCategory(name: string): Promise<Category> {
-    const res = await fetch('/api/admin/categories', {
+    const res = await fetch(this.url('/api/admin/categories'), {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -236,7 +244,7 @@ class ApiClient {
   }
 
   async adminUpdateCategory(id: number, name: string): Promise<Category> {
-    const res = await fetch(`/api/admin/categories/${id}`, {
+    const res = await fetch(this.url(`/api/admin/categories/${id}`), {
       method: 'PUT',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -246,7 +254,7 @@ class ApiClient {
   }
 
   async adminDeleteCategory(id: number): Promise<Category> {
-    const res = await fetch(`/api/admin/categories/${id}`, {
+    const res = await fetch(this.url(`/api/admin/categories/${id}`), {
       method: 'DELETE',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -257,7 +265,7 @@ class ApiClient {
   // ── Admin: Products ───────────────────────────────────────────────────────
 
   async adminGetProducts(page = 0, size = 20): Promise<ProductResponse> {
-    const res = await fetch(`/api/admin/products?pageNumber=${page}&pageSize=${size}`, {
+    const res = await fetch(this.url(`/api/admin/products?pageNumber=${page}&pageSize=${size}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -265,7 +273,7 @@ class ApiClient {
   }
 
   async adminAddProduct(categoryId: number, product: Omit<Product, 'productId'>): Promise<Product> {
-    const res = await fetch(`/api/admin/categories/${categoryId}/product`, {
+    const res = await fetch(this.url(`/api/admin/categories/${categoryId}/product`), {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -275,7 +283,7 @@ class ApiClient {
   }
 
   async adminUpdateProduct(productId: number, product: Partial<Product>): Promise<Product> {
-    const res = await fetch(`/api/admin/products/${productId}`, {
+    const res = await fetch(this.url(`/api/admin/products/${productId}`), {
       method: 'PUT',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -285,7 +293,7 @@ class ApiClient {
   }
 
   async adminDeleteProduct(productId: number): Promise<Product> {
-    const res = await fetch(`/api/admin/products/${productId}`, {
+    const res = await fetch(this.url(`/api/admin/products/${productId}`), {
       method: 'DELETE',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -296,7 +304,7 @@ class ApiClient {
   // ── Admin: Orders ─────────────────────────────────────────────────────────
 
   async adminGetOrders(page = 0, size = 20): Promise<OrderResponse> {
-    const res = await fetch(`/api/admin/orders?pageNumber=${page}&pageSize=${size}`, {
+    const res = await fetch(this.url(`/api/admin/orders?pageNumber=${page}&pageSize=${size}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -304,7 +312,7 @@ class ApiClient {
   }
 
   async adminUpdateOrderStatus(orderId: number, status: string): Promise<Order> {
-    const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+    const res = await fetch(this.url(`/api/admin/orders/${orderId}/status`), {
       method: 'PUT',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -316,7 +324,7 @@ class ApiClient {
   // ── Admin: Sellers ────────────────────────────────────────────────────────
 
   async adminGetSellers(page = 0): Promise<{ content: User[]; totalElements: number }> {
-    const res = await fetch(`/api/auth/sellers?pageNumber=${page}`, {
+    const res = await fetch(this.url(`/api/auth/sellers?pageNumber=${page}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -326,7 +334,7 @@ class ApiClient {
   // ── Seller: Products ──────────────────────────────────────────────────────
 
   async sellerGetProducts(page = 0, size = 20): Promise<ProductResponse> {
-    const res = await fetch(`/api/seller/products?pageNumber=${page}&pageSize=${size}`, {
+    const res = await fetch(this.url(`/api/seller/products?pageNumber=${page}&pageSize=${size}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -334,7 +342,7 @@ class ApiClient {
   }
 
   async sellerAddProduct(categoryId: number, product: Omit<Product, 'productId'>): Promise<Product> {
-    const res = await fetch(`/api/seller/categories/${categoryId}/product`, {
+    const res = await fetch(this.url(`/api/seller/categories/${categoryId}/product`), {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -344,7 +352,7 @@ class ApiClient {
   }
 
   async sellerUpdateProduct(productId: number, product: Partial<Product>): Promise<Product> {
-    const res = await fetch(`/api/seller/products/${productId}`, {
+    const res = await fetch(this.url(`/api/seller/products/${productId}`), {
       method: 'PUT',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -354,7 +362,7 @@ class ApiClient {
   }
 
   async sellerDeleteProduct(productId: number): Promise<Product> {
-    const res = await fetch(`/api/seller/products/${productId}`, {
+    const res = await fetch(this.url(`/api/seller/products/${productId}`), {
       method: 'DELETE',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -365,7 +373,7 @@ class ApiClient {
   // ── Seller: Orders ────────────────────────────────────────────────────────
 
   async sellerGetOrders(page = 0, size = 20): Promise<OrderResponse> {
-    const res = await fetch(`/api/seller/orders?pageNumber=${page}&pageSize=${size}`, {
+    const res = await fetch(this.url(`/api/seller/orders?pageNumber=${page}&pageSize=${size}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -373,7 +381,7 @@ class ApiClient {
   }
 
   async sellerUpdateOrderStatus(orderId: number, status: string): Promise<Order> {
-    const res = await fetch(`/api/seller/orders/${orderId}/status`, {
+    const res = await fetch(this.url(`/api/seller/orders/${orderId}/status`), {
       method: 'PUT',
       headers: this.getHeaders(),
       credentials: 'include',
@@ -385,7 +393,7 @@ class ApiClient {
   // ── Public: Categories ────────────────────────────────────────────────────
 
   async getCategories(page = 0, size = 50): Promise<CategoryResponse> {
-    const res = await fetch(`/api/public/categories?pageNumber=${page}&pageSize=${size}`, {
+    const res = await fetch(this.url(`/api/public/categories?pageNumber=${page}&pageSize=${size}`), {
       headers: this.getHeaders(),
       credentials: 'include',
     });
@@ -394,3 +402,4 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+
