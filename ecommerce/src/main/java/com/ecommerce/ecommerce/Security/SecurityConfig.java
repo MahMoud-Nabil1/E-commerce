@@ -8,6 +8,9 @@ import com.ecommerce.ecommerce.Repositories.RoleRepository;
 import com.ecommerce.ecommerce.Repositories.UserRepository;
 import com.ecommerce.ecommerce.Security.Jwt.AuthEntryPointJwt;
 import com.ecommerce.ecommerce.Security.Jwt.AuthTokenFilter;
+import com.ecommerce.ecommerce.Security.OAuth2.CustomOAuth2UserService;
+import com.ecommerce.ecommerce.Security.OAuth2.OAuth2AuthenticationFailureHandler;
+import com.ecommerce.ecommerce.Security.OAuth2.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +27,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.util.Set;
 
@@ -35,6 +39,10 @@ public class SecurityConfig {
 
     private final AuthEntryPointJwt unauthorizedHandler;
     private final AuthTokenFilter authTokenFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2FailureHandler;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     // BCrypt for password hashing across the app.
     @Bean
@@ -48,26 +56,52 @@ public class SecurityConfig {
         return authConfig.getAuthenticationManager();
     }
 
-    // Defines URL access rules and stateless JWT session policy.
+    // Defines URL access rules, stateless JWT session policy, and OAuth2 login.
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // CSRF disabled because JWT cookies handle protection.
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {
-                })
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 // No server-side sessions; JWT is the source of truth.
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // NOTE: OAuth2 login requires a brief session to store the state/nonce
+                // parameters during the redirect flow. We use IF_REQUIRED so Spring
+                // creates a session only for that transient exchange — it is discarded
+                // immediately after the success handler issues the JWT cookie.
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // OAuth2 redirect endpoints must be public.
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Sellers only — admins manage via /api/admin/**, not /api/seller/**
                         .requestMatchers("/api/seller/**").hasRole("SELLER")
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().authenticated());
+                        .anyRequest().authenticated())
+                // ── OAuth2 Login ──────────────────────────────────────────────────────
+                // Spring Security handles the /oauth2/authorization/{provider} redirect
+                // and the /login/oauth2/code/{provider} callback automatically.
+                .oauth2Login(oauth2 -> oauth2
+                        // Authorization request base URI — frontend links to:
+                        //   /oauth2/authorization/google
+                        //   /oauth2/authorization/github
+                        .authorizationEndpoint(endpoint ->
+                                endpoint.baseUri("/oauth2/authorization"))
+                        // Callback URI that the provider redirects back to.
+                        // Must match the "Authorized redirect URI" registered in the
+                        // Google Cloud Console / GitHub OAuth App settings.
+                        .redirectionEndpoint(endpoint ->
+                                endpoint.baseUri("/login/oauth2/code/*"))
+                        // Our custom service that resolves/creates the local User record.
+                        .userInfoEndpoint(userInfo ->
+                                userInfo.userService(customOAuth2UserService))
+                        // Issues the JWT cookie and redirects to the frontend.
+                        .successHandler(oAuth2SuccessHandler)
+                        // Redirects to the frontend with an error message.
+                        .failureHandler(oAuth2FailureHandler));
 
         // JWT filter runs before Spring's default username/password filter.
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);

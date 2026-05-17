@@ -52,6 +52,14 @@ public class JwtUtils {
     @Value("${spring.app.jwtCookieName:ecommerce-cookie}")
     private String jwtCookie;
 
+    // true in production (HTTPS), false for local HTTP dev
+    @Value("${spring.app.cookieSecure:false}")
+    private boolean cookieSecure;
+
+    // "Lax" for same-site dev, "None" for cross-origin production (requires Secure=true)
+    @Value("${spring.app.cookieSameSite:Lax}")
+    private String cookieSameSite;
+
     /**
      * HMAC-SHA signing key — computed once at startup and reused for every JWT
      * operation.
@@ -93,8 +101,8 @@ public class JwtUtils {
                 .path("/api")
                 .maxAge(24 * 60 * 60)
                 .httpOnly(true)
-                .secure(false)       // false for HTTP localhost dev
-                .sameSite("Lax")     // Lax works with Vite proxy over HTTP
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .build();
     }
 
@@ -104,8 +112,8 @@ public class JwtUtils {
                 .path("/api")
                 .maxAge(0)
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .build();
     }
 

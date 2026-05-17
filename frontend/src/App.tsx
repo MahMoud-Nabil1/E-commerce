@@ -13,6 +13,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SellerDashboard from './pages/SellerDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleRedirect from './components/RoleRedirect';
+import OAuth2CallbackPage from './pages/OAuth2CallbackPage';
 import './App.css';
 
 function App() {
@@ -40,6 +41,9 @@ function App() {
 
           {/* Role-based redirect after login */}
           <Route path="/redirect" element={<RoleRedirect />} />
+
+          {/* OAuth2 callback — Spring redirects here after social login */}
+          <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
 
           {/* Public / user routes — with Navbar */}
           <Route
