@@ -1,4 +1,5 @@
 // DB entity: application user with roles and addresses.
+// Supports both local (username/password) and OAuth2 (Google, GitHub) sign-in.
 package com.ecommerce.ecommerce.Models;
 
 import jakarta.persistence.*;
@@ -30,7 +31,7 @@ public class User {
     private Long userId;
 
     @NotBlank
-    @Size(max = 20)
+    @Size(max = 50)
     @Column(name = "username")
     private String username;
 
@@ -40,11 +41,19 @@ public class User {
     @Column(name = "email")
     private String email;
 
-    // Stores BCrypt hash, never plaintext.
-    @NotBlank
+    // Nullable for OAuth2 users who authenticate via a provider and have no local password.
     @Size(max = 120)
     @Column(name = "password")
     private String password;
+
+    // "local" for username/password accounts; "google" or "github" for OAuth2 accounts.
+    @Column(name = "provider", length = 20, nullable = false)
+    private String provider = "local";
+
+    // The unique ID returned by the OAuth2 provider (e.g. Google sub, GitHub id).
+    // Null for local accounts.
+    @Column(name = "provider_id")
+    private String providerId;
 
     // Many-to-many via join table; loaded lazily for performance.
     @ManyToMany(fetch = FetchType.LAZY)
@@ -56,10 +65,20 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private java.util.List<Address> addresses = new java.util.ArrayList<>();
 
+    // Constructor for local (username/password) registration.
     public User(String username, String email, String password) {
         this.username = username;
         this.email = email;
         this.password = password;
+        this.provider = "local";
+    }
+
+    // Constructor for OAuth2 user creation.
+    public User(String username, String email, String provider, String providerId) {
+        this.username = username;
+        this.email = email;
+        this.provider = provider;
+        this.providerId = providerId;
     }
         
     @OneToOne(mappedBy = "user", cascade = { CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)

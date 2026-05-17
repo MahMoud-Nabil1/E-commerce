@@ -146,8 +146,14 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // Extracts user info from the current security context.
+    // Returns null if the authentication is missing or not yet resolved —
+    // the controller handles the null case and returns an appropriate response.
     @Override
     public UserInfoResponse getCurrentUserDetails(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication.getPrincipal().equals("anonymousUser")) {
+            return null;
+        }
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         List<String> roles = extractRoleNames(userDetails);
         return new UserInfoResponse(userDetails.getId(), userDetails.getUsername(), roles);

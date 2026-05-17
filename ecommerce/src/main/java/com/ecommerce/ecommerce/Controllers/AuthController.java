@@ -64,11 +64,15 @@ public class AuthController {
     /**
      * What it does: Returns the full profile details (ID, username, roles) of the logged-in user.
      * What it expects: Authentication context (cookie/token).
-     * What it returns: A UserInfoResponse object wrapped in a 200 OK.
+     * What it returns: A UserInfoResponse object wrapped in a 200 OK, or 401 if not authenticated.
      */
     @GetMapping("/user")
     public ResponseEntity<?> getUserDetails(Authentication authentication) {
-        return ResponseEntity.ok(authService.getCurrentUserDetails(authentication));
+        UserInfoResponse response = authService.getCurrentUserDetails(authentication);
+        if (response == null) {
+            return ResponseEntity.status(401).body(new MessageResponse("Not authenticated"));
+        }
+        return ResponseEntity.ok(response);
     }
 
     /**
