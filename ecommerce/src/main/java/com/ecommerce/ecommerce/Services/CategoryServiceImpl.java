@@ -1,4 +1,4 @@
-// Category CRUD with duplicate detection and pagination.
+// Category CRUD with duplicate detection, pagination, and caching optimization.
 package com.ecommerce.ecommerce.Services;
 
 import com.ecommerce.ecommerce.exceptions.APIException;
@@ -9,6 +9,8 @@ import com.ecommerce.ecommerce.Payload.CategoryResponse;
 import com.ecommerce.ecommerce.Repositories.CategoryRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,8 +20,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Implementation of the CategoryService handling the core category business
- * logic.
+ * Implementation of the CategoryService handling the core category business logic.
  */
 @Service
 public class CategoryServiceImpl implements CategoryService {
@@ -31,8 +32,12 @@ public class CategoryServiceImpl implements CategoryService {
     private ModelMapper modelMapper;
 
     // Returns paginated category list for public browsing.
+    // Caches the response based on pageNumber, pageSize, sortBy, and sortOrder.
     @Override
+    @Cacheable(value = "categories", key = "#pageNumber + '-' + #pageSize + '-' + #sortBy + '-' + #sortOrder")
     public CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        System.out.println("-----> [CACHE MISS] Fetching Categories from MySQL Database! <-----");
+
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -59,7 +64,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     // Creates category if name doesn't already exist. DB write.
+    // Evicts all cached categories to ensure freshness after adding a new category.
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryDTO createCategory(CategoryDTO categoryDTO) {
         Category category = modelMapper.map(categoryDTO, Category.class);
 
@@ -72,7 +79,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     // Deletes category. Cascades to associated products.
+    // Evicts all cached categories to reflect the deletion immediately.
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryDTO deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
@@ -82,7 +91,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     // Updates category name only, preserving relationships.
+    // Evicts all cached categories so updated names appear on the next fetch.
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryDTO updateCategory(CategoryDTO categoryDTO, Long categoryId) {
         Category savedCategory = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
