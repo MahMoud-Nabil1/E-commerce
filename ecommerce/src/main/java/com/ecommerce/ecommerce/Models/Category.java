@@ -13,7 +13,10 @@ import lombok.ToString;
 import java.util.List;
 
 @Entity
-@Table(name = "categories")
+@Table(name = "categories", indexes = {
+        // 1. Optimize lookup, search, and duplicate-check validation queries by category name
+        @Index(name = "idx_category_name", columnList = "category_name")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
