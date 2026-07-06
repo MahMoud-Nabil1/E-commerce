@@ -88,4 +88,19 @@ public class User {
             cascade = {CascadeType.PERSIST, CascadeType.MERGE},
             orphanRemoval = true)
     private Set<Product> products;
+
+    @Column(name = "enabled", nullable = false, columnDefinition = "boolean default true")
+    private boolean enabled = true;
+
+    @Column(name = "email_verification_otp")
+    private String emailVerificationOtp;
+
+    @Column(name = "email_verification_otp_expiry")
+    private java.time.LocalDateTime emailVerificationOtpExpiry;
+
+    @Column(name = "password_reset_otp")
+    private String passwordResetOtp;
+
+    @Column(name = "password_reset_otp_expiry")
+    private java.time.LocalDateTime passwordResetOtpExpiry;
 }

@@ -63,4 +63,35 @@ public interface AuthService {
      * @return the paginated seller data (implementation-specific return type)
      */
     Object getAllSellers(Pageable pageDetails);
+
+    /**
+     * Verifies the user's email using the provided OTP.
+     *
+     * @param email the user's email
+     * @param otp the 6-digit one-time password
+     */
+    void verifyEmail(String email, String otp);
+
+    /**
+     * Resends the verification OTP to the user's email if they are not already verified.
+     *
+     * @param email the user's email
+     */
+    void resendVerificationOtp(String email);
+
+    /**
+     * Initiates the forgot password flow by generating and sending a reset OTP.
+     *
+     * @param email the user's email
+     */
+    void forgotPassword(String email);
+
+    /**
+     * Resets the user's password using the provided reset OTP.
+     *
+     * @param email the user's email
+     * @param otp the 6-digit one-time password
+     * @param newPassword the new password to set
+     */
+    void resetPassword(String email, String otp, String newPassword);
 }
