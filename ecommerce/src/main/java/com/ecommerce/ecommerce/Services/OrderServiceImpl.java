@@ -56,7 +56,7 @@ public class OrderServiceImpl implements OrderService {
     // Converts user's cart into a persisted order. DB-heavy.
     @Override
     @Transactional
-    public OrderDTO placeOrder(String emailId, Long addressId, String paymentMethod, String pgName, String pgPaymentId, String pgStatus, String pgResponseMessage) {
+    public OrderDTO placeOrder(String emailId, Long addressId, String paymentMethod, String transactionId) {
         Cart cart = cartRepository.findCartByEmail(emailId);
         if (cart == null) {
             throw new ResourceNotFoundException("Cart", "email", emailId);
@@ -69,11 +69,22 @@ public class OrderServiceImpl implements OrderService {
         order.setEmail(emailId);
         order.setOrderDate(LocalDate.now());
         order.setTotalAmount(cart.getTotalPrice());
-        order.setOrderStatus("Accepted");
+        
+        if ("CASH_ON_DELIVERY".equalsIgnoreCase(paymentMethod)) {
+            order.setOrderStatus("CONFIRMED");
+        } else if ("INSTAPAY".equalsIgnoreCase(paymentMethod) || "VODAFONE_CASH".equalsIgnoreCase(paymentMethod)) {
+            if (transactionId == null || transactionId.trim().isEmpty()) {
+                throw new APIException("Transaction ID is required for " + paymentMethod);
+            }
+            order.setOrderStatus("PENDING_PAYMENT");
+        } else {
+            order.setOrderStatus("PENDING_PAYMENT");
+        }
+        
         order.setAddress(address);
 
         // Payment must be saved before order to satisfy FK.
-        Payment payment = new Payment(paymentMethod, pgPaymentId, pgStatus, pgResponseMessage, pgName);
+        Payment payment = new Payment(paymentMethod, transactionId, "SUCCESS", "Manual Processing", "ManualGateway");
         payment.setOrder(order);
         payment = paymentRepository.save(payment);
         order.setPayment(payment);
@@ -99,8 +110,46 @@ public class OrderServiceImpl implements OrderService {
 
         orderItems = orderItemRepository.saveAll(orderItems);
 
-        // Deduct stock and clear cart after order is saved.
+        // Deduct stock if COD
+        if ("CASH_ON_DELIVERY".equalsIgnoreCase(paymentMethod)) {
+            cart.getCartItems().forEach(item -> {
+                int quantity = item.getQuantity();
+                Product product = item.getProduct();
+
+                if (product.getQuantity() < quantity) {
+                    throw new com.ecommerce.ecommerce.exceptions.APIException("Product " + product.getProductName() + " is out of stock or insufficient quantity");
+                }
+
+                product.setQuantity(product.getQuantity() - quantity);
+                productRepository.save(product);
+            });
+        }
+        
+        // Clear cart after order is saved.
         cart.getCartItems().forEach(item -> {
+            cartService.deleteProductFromCart(cart.getCartId(), item.getProduct().getProductId());
+        });
+
+        OrderDTO orderDTO = modelMapper.map(savedOrder, OrderDTO.class);
+        orderItems.forEach(item -> orderDTO.getOrderItems().add(modelMapper.map(item, OrderItemDTO.class)));
+
+        orderDTO.setAddressId(addressId);
+
+        return orderDTO;
+    }
+
+    @Override
+    @Transactional
+    public OrderDTO approveOrderPayment(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "orderId", orderId));
+
+        if (!"PENDING_PAYMENT".equalsIgnoreCase(order.getOrderStatus())) {
+            throw new APIException("Order is not in PENDING_PAYMENT status.");
+        }
+
+        // Deduct stock
+        order.getOrderItems().forEach(item -> {
             int quantity = item.getQuantity();
             Product product = item.getProduct();
 
@@ -110,13 +159,14 @@ public class OrderServiceImpl implements OrderService {
 
             product.setQuantity(product.getQuantity() - quantity);
             productRepository.save(product);
-            cartService.deleteProductFromCart(cart.getCartId(), item.getProduct().getProductId());
         });
 
-        OrderDTO orderDTO = modelMapper.map(savedOrder, OrderDTO.class);
-        orderItems.forEach(item -> orderDTO.getOrderItems().add(modelMapper.map(item, OrderItemDTO.class)));
+        order.setOrderStatus("PAID");
+        orderRepository.save(order);
 
-        orderDTO.setAddressId(addressId);
+        OrderDTO orderDTO = modelMapper.map(order, OrderDTO.class);
+        order.getOrderItems().forEach(item -> orderDTO.getOrderItems().add(modelMapper.map(item, OrderItemDTO.class)));
+        orderDTO.setAddressId(order.getAddress().getAddressId());
 
         return orderDTO;
     }
@@ -200,8 +250,33 @@ public class OrderServiceImpl implements OrderService {
             // but keeping it simple
         }
         return orders.stream()
-                .map(order -> modelMapper.map(order, OrderDTO.class))
+                .map(order -> {
+                    OrderDTO dto = modelMapper.map(order, OrderDTO.class);
+                    if (order.getAddress() != null && dto.getAddressId() == null) {
+                        dto.setAddressId(order.getAddress().getAddressId());
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public OrderDTO getOrderDetails(Long orderId, String emailId) {
+        Order order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "orderId", orderId));
+
+        User loggedIn = authUtil.loggedInUser();
+        boolean isAdmin = loggedIn.getRoles().stream()
+                .anyMatch(r -> r.getRoleName().name().equals("ROLE_ADMIN"));
+
+        if (!order.getEmail().equalsIgnoreCase(emailId) && !isAdmin) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("You do not have permission to view this order.");
+        }
+
+        OrderDTO orderDTO = modelMapper.map(order, OrderDTO.class);
+        if (order.getAddress() != null && orderDTO.getAddressId() == null) {
+            orderDTO.setAddressId(order.getAddress().getAddressId());
+        }
+        return orderDTO;
+    }
 }

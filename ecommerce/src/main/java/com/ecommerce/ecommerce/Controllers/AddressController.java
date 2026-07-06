@@ -42,7 +42,10 @@ public class AddressController {
      */
     @GetMapping("/addresses")
     public ResponseEntity<List<AddressDTO>> getAddresses(){
-        List<AddressDTO> addressList = addressService.getAddresses();
+        User user = authUtil.loggedInUser();
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getRoleName().name().equals("ROLE_ADMIN"));
+        List<AddressDTO> addressList = isAdmin ? addressService.getAddresses() : addressService.getUserAddresses(user);
         return new ResponseEntity<>(addressList, HttpStatus.OK);
     }
 

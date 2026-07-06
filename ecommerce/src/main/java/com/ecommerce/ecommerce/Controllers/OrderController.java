@@ -35,18 +35,20 @@ public class OrderController {
      * What it expects: The 'paymentMethod' in the URL path, and an OrderRequestDTO in the JSON body containing payment and address details.
      * What it returns: An OrderDTO representing the final processed order with 201 Created.
      */
-    @PostMapping("/order/users/payments/{paymentMethod}")
-    public ResponseEntity<OrderDTO> orderProducts(@PathVariable String paymentMethod, @RequestBody OrderRequestDTO orderRequestDTO) {
+    /**
+     * What it does: Places an order from the user's current cart and automatically deducts stock if COD.
+     * What it expects: An OrderRequestDTO in the JSON body containing payment and address details.
+     * What it returns: An OrderDTO representing the final processed order with 201 Created.
+     */
+    @PostMapping("/orders/checkout")
+    public ResponseEntity<OrderDTO> checkout(@RequestBody OrderRequestDTO orderRequestDTO) {
         String emailId = authUtil.loggedInEmail();
         System.out.println("orderRequestDTO DATA: " + orderRequestDTO);
         OrderDTO order = orderService.placeOrder(
                 emailId,
                 orderRequestDTO.getAddressId(),
-                paymentMethod,
-                orderRequestDTO.getPgName(),
-                orderRequestDTO.getPgPaymentId(),
-                orderRequestDTO.getPgStatus(),
-                orderRequestDTO.getPgResponseMessage()
+                orderRequestDTO.getPaymentMethod(),
+                orderRequestDTO.getTransactionId()
         );
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
@@ -131,5 +133,51 @@ public class OrderController {
         String emailId = authUtil.loggedInEmail();
         List<OrderDTO> orders = orderService.getOrdersByUser(emailId);
         return new ResponseEntity<>(orders, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Gets all orders placed by the currently logged-in user.
+     * What it expects: Current auth context, no parameters.
+     * What it returns: A List of OrderDTO objects representing order history with 200 OK.
+     */
+    @GetMapping("/orders/my-orders")
+    public ResponseEntity<List<OrderDTO>> getMyOrders() {
+        String emailId = authUtil.loggedInEmail();
+        List<OrderDTO> orders = orderService.getOrdersByUser(emailId);
+        return new ResponseEntity<>(orders, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Gets full details of a specific order including items and shipping address.
+     * What it expects: 'orderId' in path, and user must own the order or be an Admin.
+     * What it returns: An OrderDTO with full breakdown with 200 OK.
+     */
+    @GetMapping({"/orders/{orderId}/details", "/orders/{orderId}"})
+    public ResponseEntity<OrderDTO> getOrderDetails(@PathVariable Long orderId) {
+        String emailId = authUtil.loggedInEmail();
+        OrderDTO order = orderService.getOrderDetails(orderId, emailId);
+        return new ResponseEntity<>(order, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Approves a pending payment (Admin).
+     * What it expects: 'orderId' in the URL.
+     * What it returns: The updated OrderDTO object with 200 OK.
+     */
+    @PutMapping("/admin/orders/{orderId}/approve-payment")
+    public ResponseEntity<OrderDTO> approveOrderPayment(@PathVariable Long orderId) {
+        OrderDTO order = orderService.approveOrderPayment(orderId);
+        return new ResponseEntity<>(order, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Approves a pending payment (Seller).
+     * What it expects: 'orderId' in the URL.
+     * What it returns: The updated OrderDTO object with 200 OK.
+     */
+    @PutMapping("/seller/orders/{orderId}/approve-payment")
+    public ResponseEntity<OrderDTO> approveOrderPaymentSeller(@PathVariable Long orderId) {
+        OrderDTO order = orderService.approveOrderPayment(orderId);
+        return new ResponseEntity<>(order, HttpStatus.OK);
     }
 }

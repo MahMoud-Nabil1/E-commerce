@@ -1,36 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import { apiClient } from '../lib/api';
+import type { Product, Category, CategoryResponse } from '../types';
 import './ProductsPage.css';
-
-interface Product {
-  productId: number;
-  productName: string;
-  image?: string;
-  description: string;
-  quantity: number;
-  price: number;
-  discount: number;
-  specialPrice: number;
-}
-
-interface Category {
-  categoryId: number;
-  categoryName: string;
-}
-
-interface ProductResponse {
-  content: Product[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
-
-interface CategoryResponse {
-  content: Category[];
-}
 
 const PAGE_SIZE = 12;
 
@@ -54,8 +27,7 @@ export default function ProductsPage() {
 
   // Fetch categories once
   useEffect(() => {
-    fetch('/api/public/categories?pageNumber=0&pageSize=50')
-      .then((r) => r.json())
+    apiClient.getCategories(0, 50)
       .then((data: CategoryResponse) => setCategories(data.content ?? []))
       .catch(() => {/* non-critical */});
   }, []);
@@ -65,18 +37,16 @@ export default function ProductsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({
-        pageNumber: String(page),
-        pageSize: String(PAGE_SIZE),
+      const params: Record<string, string | number> = {
+        pageNumber: page,
+        pageSize: PAGE_SIZE,
         sortBy: 'productName',
         sortOrder: 'asc',
-      });
-      if (keyword) params.set('keyword', keyword);
-      if (category) params.set('category', category);
+      };
+      if (keyword) params.keyword = keyword;
+      if (category) params.category = category;
 
-      const res = await fetch(`/api/public/products?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load products.');
-      const data = (await res.json()) as ProductResponse;
+      const data = await apiClient.getProducts(params);
       setProducts(data.content ?? []);
       setTotalPages(data.totalPages ?? 0);
       setTotalElements(data.totalElements ?? 0);

@@ -92,7 +92,8 @@ public class AuthServiceImpl implements AuthService {
 
         List<String> roles = extractRoleNames(userDetails);
         UserInfoResponse response = new UserInfoResponse(
-                userDetails.getId(), userDetails.getUsername(), roles);
+                userDetails.getId(), userDetails.getUsername(), roles, userDetails.getEmail(), null,
+                userDetails.getDisplayName(), userDetails.getPhone(), userDetails.getJoinedDate());
 
         return new AuthenticationResult(jwtCookie, response);
     }
@@ -156,7 +157,8 @@ public class AuthServiceImpl implements AuthService {
         }
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         List<String> roles = extractRoleNames(userDetails);
-        return new UserInfoResponse(userDetails.getId(), userDetails.getUsername(), roles);
+        return new UserInfoResponse(userDetails.getId(), userDetails.getUsername(), roles, userDetails.getEmail(), null,
+                userDetails.getDisplayName(), userDetails.getPhone(), userDetails.getJoinedDate());
     }
 
     // Returns an empty cookie that clears the JWT on logout.

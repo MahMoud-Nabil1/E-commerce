@@ -1,40 +1,8 @@
 import { useEffect, useState } from 'react';
 import ProductCard from '../components/ProductCard';
+import { apiClient } from '../lib/api';
+import type { Product, Category } from '../types';
 import './HomePage.css';
-
-interface Product {
-  productId: number;
-  productName: string;
-  image?: string;
-  description: string;
-  quantity: number;
-  price: number;
-  discount: number;
-  specialPrice: number;
-}
-
-interface Category {
-  categoryId: number;
-  categoryName: string;
-}
-
-interface ProductResponse {
-  content: Product[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
-
-interface CategoryResponse {
-  content: Category[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -45,17 +13,10 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchHomepageData() {
       try {
-        const [productsResponse, categoriesResponse] = await Promise.all([
-          fetch('/api/public/products?pageNumber=0&pageSize=6'),
-          fetch('/api/public/categories?pageNumber=0&pageSize=6'),
+        const [productsJson, categoriesJson] = await Promise.all([
+          apiClient.getProducts({ pageNumber: 0, pageSize: 6 }),
+          apiClient.getCategories(0, 6),
         ]);
-
-        if (!productsResponse.ok || !categoriesResponse.ok) {
-          throw new Error('Failed to load homepage data from server.');
-        }
-
-        const productsJson = (await productsResponse.json()) as ProductResponse;
-        const categoriesJson = (await categoriesResponse.json()) as CategoryResponse;
 
         setProducts(productsJson.content ?? []);
         setCategories(categoriesJson.content ?? []);

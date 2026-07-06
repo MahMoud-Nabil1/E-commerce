@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, type Cart, type CartProduct } from '../lib/api';
+import { apiClient } from '../lib/api';
+import type { Cart, CartProduct } from '../types';
 import './CartPage.css';
 
 export default function CartPage() {
@@ -256,7 +257,7 @@ export default function CartPage() {
               </div>
             </div>
 
-            <button type="button" className="cart-btn-primary cart-checkout-btn">
+            <button type="button" className="cart-btn-primary cart-checkout-btn" onClick={() => navigate('/checkout')}>
               Proceed to Checkout
             </button>
 

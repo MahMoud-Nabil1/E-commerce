@@ -6,7 +6,8 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { apiClient, type User } from '../lib/api';
+import { apiClient } from '../lib/api';
+import type { User } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

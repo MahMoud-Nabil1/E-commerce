@@ -1,17 +1,7 @@
 import { Link } from 'react-router-dom';
+import type { Product } from '../types';
 import '../pages/HomePage.css';
 import './ProductCard.css';
-
-interface Product {
-  productId: number;
-  productName: string;
-  image?: string;
-  description: string;
-  quantity: number;
-  price: number;
-  discount: number;
-  specialPrice: number;
-}
 
 export default function ProductCard({ product }: { product: Product }) {
   const inStock = product.quantity > 0;

@@ -9,6 +9,9 @@ import DealsPage from './pages/DealsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import OrderSuccessPage from './pages/OrderSuccessPage';
+import { ProfileDashboard } from './pages/ProfileDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import SellerDashboard from './pages/SellerDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -58,6 +61,13 @@ function App() {
                     <Route path="/products/:productId" element={<ProductPage />} />
                     <Route path="/categories" element={<CategoriesPage />} />
                     <Route path="/cart" element={<CartPage />} />
+                    <Route path="/checkout" element={<CheckoutPage />} />
+                    <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
+                    <Route path="/profile/*" element={
+                      <ProtectedRoute roles={['USER', 'SELLER', 'ADMIN']}>
+                        <ProfileDashboard />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/deals" element={<DealsPage />} />

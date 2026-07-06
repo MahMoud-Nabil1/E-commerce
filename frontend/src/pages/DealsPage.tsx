@@ -1,27 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import { apiClient } from '../lib/api';
+import type { Product } from '../types';
 import './DealsPage.css';
-
-interface Product {
-  productId: number;
-  productName: string;
-  image?: string;
-  description: string;
-  quantity: number;
-  price: number;
-  discount: number;
-  specialPrice: number;
-}
-
-interface ProductResponse {
-  content: Product[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
 
 const PAGE_SIZE = 12;
 
@@ -52,15 +34,12 @@ export default function DealsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({
-        pageNumber: String(page),
-        pageSize: String(PAGE_SIZE),
+      const data = await apiClient.getProducts({
+        pageNumber: page,
+        pageSize: PAGE_SIZE,
         sortBy: 'price',
         sortOrder: 'asc',
       });
-      const res = await fetch(`/api/public/products?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load deals.');
-      const data = (await res.json()) as ProductResponse;
 
       // Keep only discounted products
       let deals = (data.content ?? []).filter(p => p.discount > 0);
