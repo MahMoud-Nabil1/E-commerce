@@ -32,6 +32,8 @@ interface CategoryResponse {
   content: Category[];
 }
 
+import { API_BASE } from '../lib/api';
+
 const PAGE_SIZE = 12;
 
 export default function ProductsPage() {
@@ -54,7 +56,7 @@ export default function ProductsPage() {
 
   // Fetch categories once
   useEffect(() => {
-    fetch('/api/public/categories?pageNumber=0&pageSize=50')
+    fetch(`${API_BASE}/api/public/categories?pageNumber=0&pageSize=50`)
       .then((r) => r.json())
       .then((data: CategoryResponse) => setCategories(data.content ?? []))
       .catch(() => {/* non-critical */});
@@ -74,7 +76,7 @@ export default function ProductsPage() {
       if (keyword) params.set('keyword', keyword);
       if (category) params.set('category', category);
 
-      const res = await fetch(`/api/public/products?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/public/products?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to load products.');
       const data = (await res.json()) as ProductResponse;
       setProducts(data.content ?? []);

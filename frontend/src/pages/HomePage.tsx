@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../lib/api';
 import ProductCard from '../components/ProductCard';
 import './HomePage.css';
 
@@ -46,8 +47,8 @@ export default function HomePage() {
     async function fetchHomepageData() {
       try {
         const [productsResponse, categoriesResponse] = await Promise.all([
-          fetch('/api/public/products?pageNumber=0&pageSize=6'),
-          fetch('/api/public/categories?pageNumber=0&pageSize=6'),
+          fetch(`${API_BASE}/api/public/products?pageNumber=0&pageSize=6`),
+          fetch(`${API_BASE}/api/public/categories?pageNumber=0&pageSize=6`),
         ]);
 
         if (!productsResponse.ok || !categoriesResponse.ok) {

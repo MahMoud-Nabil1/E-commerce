@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
+import { apiClient, API_BASE } from '../lib/api';
 import './ProductPage.css';
 
 interface Product {
@@ -34,7 +34,7 @@ export default function ProductPage() {
 
     async function fetchProduct() {
       try {
-        const res = await fetch(`/api/public/products/${productId}`);
+        const res = await fetch(`${API_BASE}/api/public/products/${productId}`);
         if (!res.ok) throw new Error('Failed to load product details.');
         const data = (await res.json()) as Product;
         setProduct(data);
@@ -119,7 +119,7 @@ export default function ProductPage() {
               <div className="product-detail__image-frame">
                 {product.image ? (
                   <img
-                    src={`/api/public/products/image/${product.image}`}
+                    src={`${API_BASE}/api/public/products/image/${product.image}`}
                     alt={product.productName}
                     className="product-detail__img"
                   />

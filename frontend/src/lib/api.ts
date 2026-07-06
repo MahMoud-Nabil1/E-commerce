@@ -103,7 +103,7 @@ export interface OrderResponse {
 // In dev: all requests go through Vite's /api proxy → http://localhost:8080/api
 // In production: VITE_API_BASE_URL points directly to the backend Render URL
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 class ApiClient {
   private getHeaders(): HeadersInit {

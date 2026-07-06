@@ -23,6 +23,8 @@ interface ProductResponse {
   lastPage: boolean;
 }
 
+import { API_BASE } from '../lib/api';
+
 const PAGE_SIZE = 12;
 
 const DISCOUNT_TIERS = [
@@ -58,7 +60,7 @@ export default function DealsPage() {
         sortBy: 'price',
         sortOrder: 'asc',
       });
-      const res = await fetch(`/api/public/products?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/public/products?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to load deals.');
       const data = (await res.json()) as ProductResponse;
 

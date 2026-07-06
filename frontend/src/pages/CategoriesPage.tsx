@@ -200,6 +200,8 @@ function getCategoryVisual(name: string): CategoryVisual {
   };
 }
 
+import { API_BASE } from '../lib/api';
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
@@ -211,7 +213,7 @@ export default function CategoriesPage() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch('/api/public/categories?pageNumber=0&pageSize=100');
+        const res = await fetch(`${API_BASE}/api/public/categories?pageNumber=0&pageSize=100`);
         if (!res.ok) throw new Error('Failed to load categories.');
         const data = (await res.json()) as CategoryResponse;
         setCategories(data.content ?? []);

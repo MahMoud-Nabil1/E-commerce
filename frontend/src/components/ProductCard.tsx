@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import '../pages/HomePage.css';
 import './ProductCard.css';
 
+import { API_BASE } from '../lib/api';
+
 interface Product {
   productId: number;
   productName: string;
@@ -32,7 +34,7 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
           {product.image ? (
             <img
-              src={`/api/public/products/image/${product.image}`}
+              src={`${API_BASE}/api/public/products/image/${product.image}`}
               alt={product.productName}
               className="product-card__img"
               loading="lazy"
