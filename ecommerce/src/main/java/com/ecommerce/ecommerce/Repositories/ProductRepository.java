@@ -4,6 +4,9 @@ package com.ecommerce.ecommerce.Repositories;
 import com.ecommerce.ecommerce.Models.Category;
 import com.ecommerce.ecommerce.Models.Product;
 import com.ecommerce.ecommerce.Models.User;
+
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,4 +25,10 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     // Used by seller dashboard to show only their own products.
     Page<Product> findByUser(User user, Pageable pageDetails);
+
+    // Used for per-seller duplicate check: ensures a seller doesn't list the same product name twice.
+    Product findByProductNameAndUser(String productName, User seller);
+
+    // Returns all offers (from all sellers) that share the same product name.
+    List<Product> findByProductName(String productName);
 }

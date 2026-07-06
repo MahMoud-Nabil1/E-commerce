@@ -58,33 +58,25 @@ public class ProductServiceImpl implements ProductService {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
 
-        boolean isProductNotPresent = true;
-
-        // Reject duplicate product names within same category.
-        List<Product> products = category.getProducts();
-        for (Product value : products) {
-            if (value.getProductName().equals(productDTO.getProductName())) {
-                isProductNotPresent = false;
-                break;
-            }
+        // Per-seller duplicate check: reject only if THIS seller already has a product with the same name.
+        User currentSeller = authUtil.loggedInUser();
+        Product existingProduct = productRepository.findByProductNameAndUser(productDTO.getProductName(), currentSeller);
+        if (existingProduct != null) {
+            throw new APIException("You already have a product with the name '" + productDTO.getProductName() + "'!");
         }
 
-        if (isProductNotPresent) {
-            Product product = modelMapper.map(productDTO, Product.class);
-            product.setImage("default.png");
-            product.setCategory(category);
-            product.setUser(authUtil.loggedInUser());
+        Product product = modelMapper.map(productDTO, Product.class);
+        product.setImage("default.png");
+        product.setCategory(category);
+        product.setUser(currentSeller);
 
-            // Server-side price calculation prevents price manipulation.
-            double specialPrice = product.getPrice() -
-                    ((product.getDiscount() * 0.01) * product.getPrice());
-            product.setSpecialPrice(specialPrice);
+        // Server-side price calculation prevents price manipulation.
+        double specialPrice = product.getPrice() -
+                ((product.getDiscount() * 0.01) * product.getPrice());
+        product.setSpecialPrice(specialPrice);
 
-            Product savedProduct = productRepository.save(product);
-            return modelMapper.map(savedProduct, ProductDTO.class);
-        } else {
-            throw new APIException("Product already exist!!");
-        }
+        Product savedProduct = productRepository.save(product);
+        return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
     // Public product listing with optional keyword and category filters.
