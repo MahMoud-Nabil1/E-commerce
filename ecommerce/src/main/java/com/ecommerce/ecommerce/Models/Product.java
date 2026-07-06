@@ -14,22 +14,27 @@ import lombok.ToString;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "products", indexes = {
-        // 1. Optimize fetching products for a specific category (essential for category catalog pages)
-        @Index(name = "idx_product_category", columnList = "category_id"),
+@Table(name = "products",
+        uniqueConstraints = {
+                // A single seller must not list two products with the same name.
+                @UniqueConstraint(name = "uk_product_name_seller", columnNames = {"product_name", "seller_id"})
+        },
+        indexes = {
+                // 1. Optimize fetching products for a specific category (essential for category catalog pages)
+                @Index(name = "idx_product_category", columnList = "category_id"),
 
-        // 2. Optimize fetching products listed by a specific seller (essential for seller dashboard)
-        @Index(name = "idx_product_seller", columnList = "seller_id"),
+                // 2. Optimize fetching products listed by a specific seller (essential for seller dashboard)
+                @Index(name = "idx_product_seller", columnList = "seller_id"),
 
-        // 3. Speed up filtering and sorting by the effective discounted price
-        @Index(name = "idx_product_special_price", columnList = "special_price"),
+                // 3. Speed up filtering and sorting by the effective discounted price
+                @Index(name = "idx_product_special_price", columnList = "special_price"),
 
-        // 4. Optimize direct search queries and alphabetical sorting by product name
-        @Index(name = "idx_product_name", columnList = "product_name"),
+                // 4. Optimize direct search queries and alphabetical sorting by product name
+                @Index(name = "idx_product_name", columnList = "product_name"),
 
-        // 5. Composite Index: Optimize filtering and sorting by price within a specific category simultaneously
-        @Index(name = "idx_category_special_price", columnList = "category_id, special_price")
-})
+                // 5. Composite Index: Optimize filtering and sorting by price within a specific category simultaneously
+                @Index(name = "idx_category_special_price", columnList = "category_id, special_price")
+        })
 public class Product {
 
     @Id
@@ -38,6 +43,7 @@ public class Product {
 
     @NotBlank
     @Size(min = 3, message = "Product name must contain atleast 3 characters")
+    @Column(name = "product_name")
     private String productName;
 
     private String image;

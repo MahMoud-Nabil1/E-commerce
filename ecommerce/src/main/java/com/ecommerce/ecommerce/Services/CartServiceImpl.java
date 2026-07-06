@@ -75,8 +75,6 @@ public class CartServiceImpl implements CartService{
 
         cartItemRepository.save(newCartItem);
 
-        product.setQuantity(product.getQuantity());
-
         cart.setTotalPrice(cart.getTotalPrice() + (product.getSpecialPrice() * quantity));
         cart.getCartItems().add(newCartItem);
 
@@ -183,10 +181,18 @@ public class CartServiceImpl implements CartService{
         if (newQuantity == 0){
             deleteProductFromCart(cartId, productId);
         } else {
+            // Snapshot old item total before updating price/quantity.
+            double oldItemTotalPrice = cartItem.getProductPrice() * cartItem.getQuantity();
+
+            // Update item with latest product pricing.
             cartItem.setProductPrice(product.getSpecialPrice());
-            cartItem.setQuantity(cartItem.getQuantity() + quantity);
+            cartItem.setQuantity(newQuantity);
             cartItem.setDiscount(product.getDiscount());
-            cart.setTotalPrice(cart.getTotalPrice() + (cartItem.getProductPrice() * quantity));
+
+            double newItemTotalPrice = cartItem.getProductPrice() * cartItem.getQuantity();
+
+            // Correct cart total: remove old contribution, add new.
+            cart.setTotalPrice(cart.getTotalPrice() - oldItemTotalPrice + newItemTotalPrice);
             cartRepository.save(cart);
         }
 
