@@ -9,7 +9,10 @@ import java.util.List;
 
 public interface OrderService {
     @Transactional
-    OrderDTO placeOrder(String emailId, Long addressId, String paymentMethod, String pgName, String pgPaymentId, String pgStatus, String pgResponseMessage);
+    OrderDTO placeOrder(String emailId, Long addressId, String paymentMethod, String transactionId);
+
+    @Transactional
+    OrderDTO approveOrderPayment(Long orderId);
 
     OrderResponse getAllOrders(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 
@@ -18,4 +21,6 @@ public interface OrderService {
     OrderResponse getAllSellerOrders(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 
     List<OrderDTO> getOrdersByUser(String emailId);
+
+    OrderDTO getOrderDetails(Long orderId, String emailId);
 }

@@ -30,6 +30,10 @@ public class UserInfoResponse {
     /** The user's email address. */
     private String email;
 
+    private String name;
+    private String phone;
+    private java.time.LocalDate joinedDate;
+
     /** List of role names assigned to the user (e.g., {@code ["ROLE_USER"]}). */
     private List<String> roles;
 
@@ -48,6 +52,17 @@ public class UserInfoResponse {
         this.roles = roles;
         this.email = email;
         this.jwtToken = jwtToken;
+    }
+
+    public UserInfoResponse(Long id, String username, List<String> roles, String email, String jwtToken, String name, String phone, java.time.LocalDate joinedDate) {
+        this.id = id;
+        this.username = username;
+        this.roles = roles;
+        this.email = email;
+        this.jwtToken = jwtToken;
+        this.name = name;
+        this.phone = phone;
+        this.joinedDate = joinedDate;
     }
 
     /**

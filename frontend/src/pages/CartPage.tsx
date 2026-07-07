@@ -65,7 +65,7 @@ export default function CartPage() {
   }
 
   const items = cart?.products ?? [];
-  const subtotal = items.reduce((s, p) => s + p.specialPrice * p.quantity, 0);
+  const subtotal = items.reduce((s: number, p: CartProduct) => s + p.specialPrice * p.quantity, 0);
   const shipping = subtotal > 0 && subtotal <= 100 ? 9.99 : 0;
   const tax = subtotal * 0.0825;
   const total = subtotal + shipping + tax;
@@ -136,7 +136,7 @@ export default function CartPage() {
           {/* Items list */}
           {!loading && !error && items.length > 0 && (
             <ul className="cart-items" aria-label="Cart items">
-              {items.map((product) => {
+              {items.map((product: CartProduct) => {
                 const busy = busyItems.has(product.productId);
                 return (
                   <li key={product.productId} className="cart-item">
@@ -256,7 +256,7 @@ export default function CartPage() {
               </div>
             </div>
 
-            <button type="button" className="cart-btn-primary cart-checkout-btn">
+            <button type="button" className="cart-btn-primary cart-checkout-btn" onClick={() => navigate('/checkout')}>
               Proceed to Checkout
             </button>
 

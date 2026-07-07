@@ -23,6 +23,9 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
     private final Long id;
     private final String username;
     private final String email;
+    private final String displayName;
+    private final String phone;
+    private final java.time.LocalDate joinedDate;
 
     // Excluded from JSON to prevent password hash leaking in API responses.
     @JsonIgnore
@@ -37,15 +40,18 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
     @JsonIgnore
     private Map<String, Object> oauth2Attributes;
 
-    // Constructor for local (username/password) logins — no OAuth2 attributes.
     public UserDetailsImpl(Long id, String username, String email, String password, boolean enabled,
-                           Collection<? extends GrantedAuthority> authorities) {
+                           Collection<? extends GrantedAuthority> authorities,
+                           String displayName, String phone, java.time.LocalDate joinedDate) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
         this.enabled = enabled;
         this.authorities = authorities;
+        this.displayName = displayName;
+        this.phone = phone;
+        this.joinedDate = joinedDate;
         this.oauth2Attributes = Map.of();
     }
 
@@ -63,7 +69,10 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
                 user.getEmail(),
                 user.getPassword(),
                 user.isEnabled(),
-                authorities);
+                authorities,
+                user.getName(),
+                user.getPhone(),
+                user.getJoinedDate());
     }
 
     // ── OAuth2User ────────────────────────────────────────────────────────────

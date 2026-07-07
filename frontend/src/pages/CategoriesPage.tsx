@@ -1,20 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiClient } from '../lib/api';
+import type { Category } from '../types';
 import './CategoriesPage.css';
-
-interface Category {
-  categoryId: number;
-  categoryName: string;
-}
-
-interface CategoryResponse {
-  content: Category[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
 
 // ── Category visual config ──────────────────────────────────────────────────
 // Maps keywords in a category name to a gradient + SVG icon.
@@ -200,8 +188,6 @@ function getCategoryVisual(name: string): CategoryVisual {
   };
 }
 
-import { API_BASE } from '../lib/api';
-
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
@@ -213,9 +199,7 @@ export default function CategoriesPage() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch(`${API_BASE}/api/public/categories?pageNumber=0&pageSize=100`);
-        if (!res.ok) throw new Error('Failed to load categories.');
-        const data = (await res.json()) as CategoryResponse;
+        const data = await apiClient.getCategories(0, 100);
         setCategories(data.content ?? []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, type Product, type Category, type Order } from '../lib/api';
+import { apiClient } from '../lib/api';
+import type { Product, Category, Order } from '../types';
 import { ProductModal } from './AdminDashboard';
 import './Dashboard.css';
 
@@ -84,14 +85,14 @@ function SellerOverviewTab() {
       apiClient.sellerGetProducts(0, 100),
       apiClient.sellerGetOrders(0, 50),
     ]).then(([p, o]) => {
-      const outOfStock = p.content.filter(prod => prod.quantity === 0).length;
-      const pending = o.content.filter(ord =>
+      const outOfStock = p.content.filter((prod: Product) => prod.quantity === 0).length;
+      const pending = o.content.filter((ord: Order) =>
         ord.orderStatus === 'Accepted' || ord.orderStatus === 'Processing'
       ).length;
-      const delivered = o.content.filter(ord => ord.orderStatus === 'Delivered').length;
+      const delivered = o.content.filter((ord: Order) => ord.orderStatus === 'Delivered').length;
       const revenue = o.content
-        .filter(ord => ord.orderStatus !== 'Cancelled')
-        .reduce((sum, ord) => sum + (ord.totalAmount ?? 0), 0);
+        .filter((ord: Order) => ord.orderStatus !== 'Cancelled')
+        .reduce((sum: number, ord: Order) => sum + (ord.totalAmount ?? 0), 0);
 
       // Top 5 products by price as a proxy for featured items
       const top = [...p.content]
@@ -347,6 +348,13 @@ function SellerOrdersTab() {
     finally { setUpdatingId(null); }
   };
 
+  const handleApprovePayment = async (orderId: number) => {
+    setUpdatingId(orderId);
+    try { await apiClient.sellerApprovePayment(orderId); load(); }
+    catch { setError('Payment approval failed'); }
+    finally { setUpdatingId(null); }
+  };
+
   return (
     <>
       <div className="dashboard__header">
@@ -371,11 +379,21 @@ function SellerOrdersTab() {
                       <td>${o.totalAmount?.toFixed(2)}</td>
                       <td><span className={`badge ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span></td>
                       <td>
-                        <select className="form-select" style={{ padding: '4px 8px', fontSize: '12px' }}
-                          value={o.orderStatus} disabled={updatingId === o.orderId}
-                          onChange={e => handleStatusChange(o.orderId, e.target.value)}>
-                          {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        {o.orderStatus === 'PENDING_PAYMENT' ? (
+                          <button 
+                            className="btn btn--primary btn--sm" 
+                            disabled={updatingId === o.orderId} 
+                            onClick={() => handleApprovePayment(o.orderId)}
+                          >
+                            Approve
+                          </button>
+                        ) : (
+                          <select className="form-select" style={{ padding: '4px 8px', fontSize: '12px' }}
+                            value={o.orderStatus} disabled={updatingId === o.orderId}
+                            onChange={e => handleStatusChange(o.orderId, e.target.value)}>
+                            {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        )}
                       </td>
                     </tr>
                   ))}

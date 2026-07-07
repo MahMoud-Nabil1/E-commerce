@@ -1,155 +1,53 @@
-// ── Types ────────────────────────────────────────────────────────────────────
+import { axiosClient } from './axiosClient';
+import type {
+  User,
+  UserProfile,
+  UserProfileUpdate,
+  LoginResponse,
+  Product,
+  ProductResponse,
+  Cart,
+  CartProduct,
+  Category,
+  CategoryResponse,
+  Address,
+  Order,
+  OrderResponse,
+} from '../types';
 
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  roles: string[];
-}
+export type {
+  User,
+  UserProfile,
+  UserProfileUpdate,
+  LoginResponse,
+  Product,
+  ProductResponse,
+  Cart,
+  CartProduct,
+  Category,
+  CategoryResponse,
+  Address,
+  Order,
+  OrderResponse,
+};
 
-// Response from POST /api/auth/login  (UserInfoResponse from backend)
-export interface LoginResponse {
-  id: number;
-  username: string;
-  email: string;
-  roles: string[];
-  jwtToken?: string; // may be null when using cookie transport
-}
-
-export interface Product {
-  productId: number;
-  productName: string;
-  description: string;
-  image?: string;
-  quantity: number;
-  price: number;
-  discount: number;
-  specialPrice: number;
-  seller?: { userId: number; username: string };
-}
-
-export interface ProductResponse {
-  content: Product[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
-
-export interface CartProduct {
-  productId: number;
-  productName: string;
-  image?: string;
-  description: string;
-  quantity: number;  // quantity in cart
-  price: number;
-  discount: number;
-  specialPrice: number;
-}
-
-export interface Cart {
-  cartId: number;
-  totalPrice: number;
-  products: CartProduct[];
-}
-
-export interface Category {
-  categoryId: number;
-  categoryName: string;
-}
-
-export interface CategoryResponse {
-  content: Category[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
-
-export interface OrderItem {
-  orderItemId: number;
-  productId: number;
-  productName: string;
-  image?: string;
-  quantity: number;
-  discount: number;
-  orderedProductPrice: number;
-}
-
-export interface Order {
-  orderId: number;
-  email: string;
-  orderItems: OrderItem[];
-  orderDate: string;
-  payment?: { paymentMethod: string };
-  totalAmount: number;
-  orderStatus: string;
-  addressId?: number;
-}
-
-export interface OrderResponse {
-  content: Order[];
-  pageNumber: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-  lastPage: boolean;
-}
-
-// ── API Client ────────────────────────────────────────────────────────────────
 // Auth uses HttpOnly cookies set by the backend — no localStorage token needed.
 // In dev: all requests go through Vite's /api proxy → http://localhost:8080/api
 // In production: VITE_API_BASE_URL points directly to the backend Render URL
+// Powered by axiosClient with request & response interceptors for secure JWT handling.
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 class ApiClient {
-  private getHeaders(): HeadersInit {
-    return { 'Content-Type': 'application/json' };
-  }
-
-  // Prepends the backend base URL so the same code works in dev (proxy) and prod (absolute URL).
-  private url(path: string): string {
-    return `${API_BASE}${path}`;
-  }
-
-  private async handle<T>(res: Response): Promise<T> {
-    if (!res.ok) {
-      let message = `HTTP ${res.status}`;
-      try {
-        const body = await res.json();
-        if (body.message) {
-          message = body.message;
-        } else if (body.error) {
-          message = body.error;
-        } else if (typeof body === 'object' && body !== null) {
-          // Validation error map: { fieldName: "error message", ... }
-          const entries = Object.entries(body as Record<string, string>);
-          if (entries.length > 0) {
-            message = entries.map(([field, msg]) => `${field}: ${msg}`).join(' | ');
-          }
-        }
-      } catch { /* ignore parse errors */ }
-      throw new Error(message);
-    }
-    // 204 No Content — return empty object
-    const text = await res.text();
-    return (text ? JSON.parse(text) : {}) as T;
-  }
-
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   /** POST /api/auth/login — sets HttpOnly JWT cookie, returns UserInfoResponse */
   async login(username: string, password: string): Promise<LoginResponse> {
-    const res = await fetch(this.url('/api/auth/login'), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      credentials: 'include', // send & receive cookies
-      body: JSON.stringify({ username, password }),
-    });
-    return this.handle<LoginResponse>(res);
+    const res = await axiosClient.post<LoginResponse>('/api/auth/login', { username, password });
+    if (res.data.jwtToken) {
+      localStorage.setItem('jwtToken', res.data.jwtToken);
+    }
+    return res.data;
   }
 
   /** POST /api/auth/signup — registers a new user */
@@ -159,247 +57,237 @@ class ApiClient {
     password: string,
     role: Set<string> = new Set(['user']),
   ): Promise<{ message: string }> {
-    const res = await fetch(this.url('/api/auth/signup'), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({ username, email, password, role: Array.from(role) }),
+    const res = await axiosClient.post<{ message: string }>('/api/auth/signup', {
+      username,
+      email,
+      password,
+      role: Array.from(role),
     });
-    return this.handle<{ message: string }>(res);
+    return res.data;
   }
 
-  /** POST /api/auth/signout — clears the JWT cookie */
+  /** POST /api/auth/signout — clears the JWT cookie and local token */
   async signout(): Promise<{ message: string }> {
-    const res = await fetch(this.url('/api/auth/signout'), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<{ message: string }>(res);
+    localStorage.removeItem('jwtToken');
+    const res = await axiosClient.post<{ message: string }>('/api/auth/signout');
+    return res.data;
   }
 
-  /** GET /api/auth/user — returns current user details (requires valid cookie) */
+  /** GET /api/auth/user — returns current user details */
   async getUser(): Promise<User> {
-    const res = await fetch(this.url('/api/auth/user'), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<User>(res);
+    const res = await axiosClient.get<User>('/api/auth/user');
+    return res.data;
+  }
+
+  // ── User Profile & Dashboard ──────────────────────────────────────────────
+
+  /** GET /api/users/me — returns detailed user profile */
+  async getUserProfile(): Promise<UserProfile> {
+    const res = await axiosClient.get<UserProfile>('/api/users/me');
+    return res.data;
+  }
+
+  /** PATCH /api/users/update-profile — updates name or phone */
+  async updateUserProfile(data: UserProfileUpdate): Promise<UserProfile> {
+    const res = await axiosClient.patch<UserProfile>('/api/users/update-profile', data);
+    return res.data;
+  }
+
+  /** GET /api/orders/my-orders — returns logged-in user order list */
+  async getMyOrders(): Promise<Order[]> {
+    const res = await axiosClient.get<Order[]>('/api/orders/my-orders');
+    return res.data;
+  }
+
+  /** GET /api/orders/{orderId}/details — returns full order breakdown */
+  async getOrderDetails(orderId: number): Promise<Order> {
+    const res = await axiosClient.get<Order>(`/api/orders/${orderId}/details`);
+    return res.data;
   }
 
   // ── Cart ──────────────────────────────────────────────────────────────────
 
   async getCart(): Promise<Cart> {
-    const res = await fetch(this.url('/api/carts/users/cart'), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<Cart>(res);
+    const res = await axiosClient.get<Cart>('/api/carts/users/cart');
+    return res.data;
   }
 
   async addToCart(productId: number, quantity: number): Promise<Cart> {
-    const res = await fetch(this.url(`/api/carts/products/${productId}/quantity/${quantity}`), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<Cart>(res);
+    const res = await axiosClient.post<Cart>(`/api/carts/products/${productId}/quantity/${quantity}`);
+    return res.data;
   }
 
   async updateCartItem(productId: number, operation: 'add' | 'delete'): Promise<Cart> {
-    const res = await fetch(this.url(`/api/cart/products/${productId}/quantity/${operation}`), {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<Cart>(res);
+    const res = await axiosClient.put<Cart>(`/api/cart/products/${productId}/quantity/${operation}`);
+    return res.data;
   }
 
   async removeFromCart(cartId: number, productId: number): Promise<string> {
-    const res = await fetch(this.url(`/api/carts/${cartId}/product/${productId}`), {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-      credentials: 'include',
+    const res = await axiosClient.delete<string>(`/api/carts/${cartId}/product/${productId}`);
+    return res.data;
+  }
+
+  // ── User / Addresses ──────────────────────────────────────────────────────
+
+  async getUserAddresses(): Promise<Address[]> {
+    const res = await axiosClient.get<Address[]>('/api/users/addresses');
+    return res.data;
+  }
+
+  async addAddress(address: Partial<Address>): Promise<Address> {
+    const res = await axiosClient.post<Address>('/api/addresses', address);
+    return res.data;
+  }
+
+  async deleteAddress(addressId: number): Promise<string> {
+    const res = await axiosClient.delete<string>(`/api/addresses/${addressId}`);
+    return res.data;
+  }
+
+  // ── Checkout / Orders ─────────────────────────────────────────────────────
+
+  async placeOrder(addressId: number, paymentMethod: string, transactionId?: string): Promise<Order> {
+    const res = await axiosClient.post<Order>('/api/orders/checkout', {
+      addressId,
+      paymentMethod,
+      transactionId: transactionId || '',
     });
-    return this.handle<string>(res);
+    return res.data;
   }
 
   // ── Admin: Categories ─────────────────────────────────────────────────────
 
   async adminGetCategories(page = 0, size = 20): Promise<CategoryResponse> {
-    const res = await fetch(this.url(`/api/public/categories?pageNumber=${page}&pageSize=${size}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<CategoryResponse>(res);
+    const res = await axiosClient.get<CategoryResponse>(`/api/public/categories?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
   }
 
   async adminCreateCategory(name: string): Promise<Category> {
-    const res = await fetch(this.url('/api/admin/categories'), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({ categoryName: name }),
-    });
-    return this.handle<Category>(res);
+    const res = await axiosClient.post<Category>('/api/admin/categories', { categoryName: name });
+    return res.data;
   }
 
   async adminUpdateCategory(id: number, name: string): Promise<Category> {
-    const res = await fetch(this.url(`/api/admin/categories/${id}`), {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({ categoryName: name }),
-    });
-    return this.handle<Category>(res);
+    const res = await axiosClient.put<Category>(`/api/admin/categories/${id}`, { categoryName: name });
+    return res.data;
   }
 
   async adminDeleteCategory(id: number): Promise<Category> {
-    const res = await fetch(this.url(`/api/admin/categories/${id}`), {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<Category>(res);
+    const res = await axiosClient.delete<Category>(`/api/admin/categories/${id}`);
+    return res.data;
   }
 
   // ── Admin: Products ───────────────────────────────────────────────────────
 
   async adminGetProducts(page = 0, size = 20): Promise<ProductResponse> {
-    const res = await fetch(this.url(`/api/admin/products?pageNumber=${page}&pageSize=${size}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<ProductResponse>(res);
+    const res = await axiosClient.get<ProductResponse>(`/api/admin/products?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
   }
 
   async adminAddProduct(categoryId: number, product: Omit<Product, 'productId'>): Promise<Product> {
-    const res = await fetch(this.url(`/api/admin/categories/${categoryId}/product`), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify(product),
-    });
-    return this.handle<Product>(res);
+    const res = await axiosClient.post<Product>(`/api/admin/categories/${categoryId}/product`, product);
+    return res.data;
   }
 
   async adminUpdateProduct(productId: number, product: Partial<Product>): Promise<Product> {
-    const res = await fetch(this.url(`/api/admin/products/${productId}`), {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify(product),
-    });
-    return this.handle<Product>(res);
+    const res = await axiosClient.put<Product>(`/api/admin/products/${productId}`, product);
+    return res.data;
   }
 
   async adminDeleteProduct(productId: number): Promise<Product> {
-    const res = await fetch(this.url(`/api/admin/products/${productId}`), {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<Product>(res);
+    const res = await axiosClient.delete<Product>(`/api/admin/products/${productId}`);
+    return res.data;
   }
 
   // ── Admin: Orders ─────────────────────────────────────────────────────────
 
   async adminGetOrders(page = 0, size = 20): Promise<OrderResponse> {
-    const res = await fetch(this.url(`/api/admin/orders?pageNumber=${page}&pageSize=${size}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<OrderResponse>(res);
+    const res = await axiosClient.get<OrderResponse>(`/api/admin/orders?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
   }
 
   async adminUpdateOrderStatus(orderId: number, status: string): Promise<Order> {
-    const res = await fetch(this.url(`/api/admin/orders/${orderId}/status`), {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({ status }),
-    });
-    return this.handle<Order>(res);
+    const res = await axiosClient.put<Order>(`/api/admin/orders/${orderId}/status`, { status });
+    return res.data;
+  }
+
+  async adminApprovePayment(orderId: number): Promise<Order> {
+    const res = await axiosClient.put<Order>(`/api/admin/orders/${orderId}/approve-payment`, {});
+    return res.data;
   }
 
   // ── Admin: Sellers ────────────────────────────────────────────────────────
 
   async adminGetSellers(page = 0): Promise<{ content: User[]; totalElements: number }> {
-    const res = await fetch(this.url(`/api/auth/sellers?pageNumber=${page}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<{ content: User[]; totalElements: number }>(res);
+    const res = await axiosClient.get<{ content: User[]; totalElements: number }>(`/api/auth/sellers?pageNumber=${page}`);
+    return res.data;
   }
 
   // ── Seller: Products ──────────────────────────────────────────────────────
 
   async sellerGetProducts(page = 0, size = 20): Promise<ProductResponse> {
-    const res = await fetch(this.url(`/api/seller/products?pageNumber=${page}&pageSize=${size}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<ProductResponse>(res);
+    const res = await axiosClient.get<ProductResponse>(`/api/seller/products?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
   }
 
   async sellerAddProduct(categoryId: number, product: Omit<Product, 'productId'>): Promise<Product> {
-    const res = await fetch(this.url(`/api/seller/categories/${categoryId}/product`), {
-      method: 'POST',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify(product),
-    });
-    return this.handle<Product>(res);
+    const res = await axiosClient.post<Product>(`/api/seller/categories/${categoryId}/product`, product);
+    return res.data;
   }
 
   async sellerUpdateProduct(productId: number, product: Partial<Product>): Promise<Product> {
-    const res = await fetch(this.url(`/api/seller/products/${productId}`), {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify(product),
-    });
-    return this.handle<Product>(res);
+    const res = await axiosClient.put<Product>(`/api/seller/products/${productId}`, product);
+    return res.data;
   }
 
   async sellerDeleteProduct(productId: number): Promise<Product> {
-    const res = await fetch(this.url(`/api/seller/products/${productId}`), {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<Product>(res);
+    const res = await axiosClient.delete<Product>(`/api/seller/products/${productId}`);
+    return res.data;
   }
 
   // ── Seller: Orders ────────────────────────────────────────────────────────
 
   async sellerGetOrders(page = 0, size = 20): Promise<OrderResponse> {
-    const res = await fetch(this.url(`/api/seller/orders?pageNumber=${page}&pageSize=${size}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<OrderResponse>(res);
+    const res = await axiosClient.get<OrderResponse>(`/api/seller/orders?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
   }
 
   async sellerUpdateOrderStatus(orderId: number, status: string): Promise<Order> {
-    const res = await fetch(this.url(`/api/seller/orders/${orderId}/status`), {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({ status }),
-    });
-    return this.handle<Order>(res);
+    const res = await axiosClient.put<Order>(`/api/seller/orders/${orderId}/status`, { status });
+    return res.data;
   }
 
-  // ── Public: Categories ────────────────────────────────────────────────────
+  async sellerApprovePayment(orderId: number): Promise<Order> {
+    const res = await axiosClient.put<Order>(`/api/seller/orders/${orderId}/approve-payment`, {});
+    return res.data;
+  }
+
+  // ── Public: Categories & Products ─────────────────────────────────────────
 
   async getCategories(page = 0, size = 50): Promise<CategoryResponse> {
-    const res = await fetch(this.url(`/api/public/categories?pageNumber=${page}&pageSize=${size}`), {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
-    return this.handle<CategoryResponse>(res);
+    const res = await axiosClient.get<CategoryResponse>(`/api/public/categories?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
+  }
+
+  async getProducts(params?: Record<string, string | number>): Promise<ProductResponse> {
+    const res = await axiosClient.get<ProductResponse>('/api/public/products', { params });
+    return res.data;
+  }
+
+  async getProductById(productId: number | string): Promise<Product> {
+    const res = await axiosClient.get<Product>(`/api/public/products/${productId}`);
+    return res.data;
+  }
+
+  async getProductsByCategory(categoryId: number | string, params?: Record<string, string | number>): Promise<ProductResponse> {
+    const res = await axiosClient.get<ProductResponse>(`/api/public/categories/${categoryId}/products`, { params });
+    return res.data;
+  }
+
+  async searchProducts(keyword: string, params?: Record<string, string | number>): Promise<ProductResponse> {
+    const res = await axiosClient.get<ProductResponse>(`/api/public/products/keyword/${keyword}`, { params });
+    return res.data;
   }
 }
 
 export const apiClient = new ApiClient();
-

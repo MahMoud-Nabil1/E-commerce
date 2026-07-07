@@ -2,18 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient, API_BASE } from '../lib/api';
+import type { Product } from '../types';
 import './ProductPage.css';
-
-interface Product {
-  productId: number;
-  productName: string;
-  image?: string;
-  description: string;
-  quantity: number;
-  price: number;
-  discount: number;
-  specialPrice: number;
-}
 
 export default function ProductPage() {
   const { productId } = useParams<{ productId: string }>();
@@ -34,9 +24,7 @@ export default function ProductPage() {
 
     async function fetchProduct() {
       try {
-        const res = await fetch(`${API_BASE}/api/public/products/${productId}`);
-        if (!res.ok) throw new Error('Failed to load product details.');
-        const data = (await res.json()) as Product;
+        const data = await apiClient.getProductById(productId!);
         setProduct(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');

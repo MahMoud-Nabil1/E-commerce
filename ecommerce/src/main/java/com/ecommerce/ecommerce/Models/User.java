@@ -55,6 +55,27 @@ public class User {
     @Column(name = "provider_id")
     private String providerId;
 
+    @Column(name = "name", length = 100)
+    private String name;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "joined_date")
+    private java.time.LocalDate joinedDate = java.time.LocalDate.now();
+
+    public String getName() {
+        return (name != null && !name.trim().isEmpty()) ? name : username;
+    }
+
+    public String getPhone() {
+        return phone != null ? phone : "";
+    }
+
+    public java.time.LocalDate getJoinedDate() {
+        return joinedDate != null ? joinedDate : java.time.LocalDate.of(2024, 1, 1);
+    }
+
     // Many-to-many via join table; loaded lazily for performance.
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_role",
