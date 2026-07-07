@@ -49,4 +49,17 @@ public class MyGlobalExceptionHandler {
         APIResponse apiResponse = new APIResponse(message, false);
         return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
     }
+
+    // Handles authentication errors (e.g. DisabledException, BadCredentialsException)
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<APIResponse> myAuthenticationException(org.springframework.security.core.AuthenticationException e) {
+        String message = e.getMessage();
+        if (e instanceof org.springframework.security.authentication.DisabledException) {
+            message = "Your email is not verified. Please verify your email first.";
+        } else if (e instanceof org.springframework.security.authentication.BadCredentialsException) {
+            message = "Invalid username or password.";
+        }
+        APIResponse apiResponse = new APIResponse(message, false);
+        return new ResponseEntity<>(apiResponse, HttpStatus.UNAUTHORIZED);
+    }
 }

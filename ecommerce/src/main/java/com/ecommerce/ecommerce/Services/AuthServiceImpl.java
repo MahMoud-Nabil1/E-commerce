@@ -61,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final MailService mailService;
 
     /**
      * {@inheritDoc}
@@ -140,9 +141,23 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.setRoles(roles);
+
+        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        user.setEmailVerificationOtp(otp);
+        user.setEmailVerificationOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+        user.setEnabled(false); // Require email verification
+
         userRepository.save(user);
 
-        return new MessageResponse("User registered successfully!");
+        String subject = "Verify your E-Commerce account email";
+        String body = "Thank you for signing up!\n\n"
+                + "Please use the following 6-digit OTP code to verify your account:\n\n"
+                + otp + "\n\n"
+                + "This OTP will expire in 15 minutes.\n\n"
+                + "If you did not request this registration, please ignore this email.";
+        mailService.sendMail(user.getEmail(), subject, body);
+
+        return new MessageResponse("User registered successfully! Please check your email for the verification OTP.");
     }
 
     // Extracts user info from the current security context.
@@ -196,6 +211,92 @@ public class AuthServiceImpl implements AuthService {
         response.put("pageSize", pageSize);
         response.put("lastPage", pageNumber >= totalPages - 1);
         return response;
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
+
+        if (user.isEnabled()) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Email is already verified.");
+        }
+
+        if (user.getEmailVerificationOtp() == null || !user.getEmailVerificationOtp().equals(otp)) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Invalid verification OTP.");
+        }
+
+        if (user.getEmailVerificationOtpExpiry() == null || user.getEmailVerificationOtpExpiry().isBefore(java.time.LocalDateTime.now())) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Verification OTP has expired. Please request a new one.");
+        }
+
+        user.setEnabled(true);
+        user.setEmailVerificationOtp(null);
+        user.setEmailVerificationOtpExpiry(null);
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void resendVerificationOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
+
+        if (user.isEnabled()) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Email is already verified.");
+        }
+
+        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        user.setEmailVerificationOtp(otp);
+        user.setEmailVerificationOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        String subject = "Verify your E-Commerce account email";
+        String body = "Please use the following new 6-digit OTP code to verify your account:\n\n"
+                + otp + "\n\n"
+                + "This OTP will expire in 15 minutes.";
+        mailService.sendMail(user.getEmail(), subject, body);
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
+
+        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        user.setPasswordResetOtp(otp);
+        user.setPasswordResetOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        String subject = "Reset your E-Commerce password";
+        String body = "You requested to reset your password.\n\n"
+                + "Please use the following 6-digit OTP code to reset your password:\n\n"
+                + otp + "\n\n"
+                + "This OTP will expire in 15 minutes.\n\n"
+                + "If you did not request a password reset, please ignore this email.";
+        mailService.sendMail(user.getEmail(), subject, body);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String email, String otp, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
+
+        if (user.getPasswordResetOtp() == null || !user.getPasswordResetOtp().equals(otp)) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Invalid reset OTP.");
+        }
+
+        if (user.getPasswordResetOtpExpiry() == null || user.getPasswordResetOtpExpiry().isBefore(java.time.LocalDateTime.now())) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Reset OTP has expired. Please request a new code.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordResetOtp(null);
+        user.setPasswordResetOtpExpiry(null);
+        userRepository.save(user);
     }
 
     // ======================== Private Helpers ========================

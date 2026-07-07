@@ -28,6 +28,8 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
     @JsonIgnore
     private final String password;
 
+    private final boolean enabled;
+
     private final Collection<? extends GrantedAuthority> authorities;
 
     // Raw OAuth2 attributes — null for local (username/password) logins.
@@ -36,12 +38,13 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
     private Map<String, Object> oauth2Attributes;
 
     // Constructor for local (username/password) logins — no OAuth2 attributes.
-    public UserDetailsImpl(Long id, String username, String email, String password,
+    public UserDetailsImpl(Long id, String username, String email, String password, boolean enabled,
                            Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
+        this.enabled = enabled;
         this.authorities = authorities;
         this.oauth2Attributes = Map.of();
     }
@@ -59,6 +62,7 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
+                user.isEnabled(),
                 authorities);
     }
 
@@ -100,7 +104,7 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 
     // Equality based on user ID only.

@@ -6,6 +6,9 @@ import com.ecommerce.ecommerce.Payload.LoginRequest;
 import com.ecommerce.ecommerce.Payload.MessageResponse;
 import com.ecommerce.ecommerce.Payload.RegisterRequest;
 import com.ecommerce.ecommerce.Payload.UserInfoResponse;
+import com.ecommerce.ecommerce.Payload.VerifyEmailRequest;
+import com.ecommerce.ecommerce.Payload.ForgotPasswordRequest;
+import com.ecommerce.ecommerce.Payload.ResetPasswordRequest;
 import com.ecommerce.ecommerce.Services.AuthService;
 import com.ecommerce.ecommerce.config.AppConstants;
 import jakarta.validation.Valid;
@@ -105,5 +108,49 @@ public class AuthController {
                 sortByAndOrder);
 
         return ResponseEntity.ok(authService.getAllSellers(pageDetails));
+    }
+
+    /**
+     * What it does: Verifies user's email using OTP code sent on sign up.
+     * What it expects: A VerifyEmailRequest containing email and otp.
+     * What it returns: A MessageResponse indicating successful verification.
+     */
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(new MessageResponse("Email verified successfully! You can now log in."));
+    }
+
+    /**
+     * What it does: Resends email verification OTP code to the registered email.
+     * What it expects: A ForgotPasswordRequest containing email.
+     * What it returns: A MessageResponse confirming OTP has been resent.
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.resendVerificationOtp(request.getEmail());
+        return ResponseEntity.ok(new MessageResponse("A new verification OTP has been sent to your email."));
+    }
+
+    /**
+     * What it does: Requests a password reset OTP code.
+     * What it expects: A ForgotPasswordRequest containing email.
+     * What it returns: A MessageResponse confirming OTP has been sent.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(new MessageResponse("Password reset OTP has been sent to your email."));
+    }
+
+    /**
+     * What it does: Resets user's password using reset OTP code.
+     * What it expects: A ResetPasswordRequest containing email, otp, and newPassword.
+     * What it returns: A MessageResponse confirming password has been reset.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
+        return ResponseEntity.ok(new MessageResponse("Password reset successfully! You can now log in with your new password."));
     }
 }
