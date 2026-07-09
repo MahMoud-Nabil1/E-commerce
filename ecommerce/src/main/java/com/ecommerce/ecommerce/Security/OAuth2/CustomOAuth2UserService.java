@@ -89,6 +89,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             // use path 1 (faster and avoids email-change edge cases).
             existing.setProvider(provider);
             existing.setProviderId(userInfo.getId());
+            existing.setEnabled(true); // OAuth2 login proves email ownership; auto-enable the account
             return userRepository.save(existing);
         }
 
