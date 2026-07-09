@@ -26,6 +26,7 @@ export default function DealsPage() {
   const [totalPages, setTotalPages]     = useState(0);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
 
   const page      = parseInt(searchParams.get('page') ?? '0', 10);
   const minDisc   = parseInt(searchParams.get('minDiscount') ?? '1', 10);
@@ -126,8 +127,21 @@ export default function DealsPage() {
       </div>
 
       <div className="container deals-layout">
+        {/* ── Mobile filter toggle ── */}
+        <button
+          type="button"
+          className="products-filter-toggle"
+          onClick={() => setSidebarOpen(v => !v)}
+          aria-expanded={sidebarOpen}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/>
+          </svg>
+          {sidebarOpen ? 'Hide Filters' : 'Show Filters'}
+        </button>
+
         {/* ── Sidebar ── */}
-        <aside className="deals-sidebar">
+        <aside className={`deals-sidebar${sidebarOpen ? ' products-sidebar--open' : ''}`}>
           {/* Discount tier filter */}
           <div className="deals-filter-group">
             <p className="deals-filter-label">Discount</p>

@@ -26,4 +26,7 @@ public interface ProductService {
     ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 
     ProductResponse getAllProductsForSeller(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
+
+    // Returns only products owned by the currently logged-in admin (same logic as seller but on admin route).
+    ProductResponse getMyProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 }

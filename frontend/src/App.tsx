@@ -64,7 +64,7 @@ function App() {
                     <Route path="/checkout" element={<CheckoutPage />} />
                     <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
                     <Route path="/profile/*" element={
-                      <ProtectedRoute roles={['USER', 'SELLER', 'ADMIN']}>
+                      <ProtectedRoute roles={['ROLE_USER', 'ROLE_SELLER', 'ROLE_ADMIN']}>
                         <ProfileDashboard />
                       </ProtectedRoute>
                     } />

@@ -1,33 +1,44 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { apiClient } from '../lib/api';
 import './AuthPage.css';
 
 const BACKEND = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
 type AccountType = 'user' | 'seller';
+type Step = 'register' | 'verify';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
 
+  const [step,        setStep]        = useState<Step>('register');
   const [accountType, setAccountType] = useState<AccountType>('user');
-  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [form,        setForm]        = useState({ username: '', email: '', password: '', confirm: '' });
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+
+  // OTP verification state
+  const [otp,         setOtp]         = useState('');
+  const [verifyLoad,  setVerifyLoad]  = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifyOk,    setVerifyOk]    = useState(false);
+  const [resendCool,  setResendCool]  = useState(false);
+  const [resendMsg,   setResendMsg]   = useState<string | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
   const pwReqs = [
-    { label: 'At least 8 characters', met: form.password.length >= 8 },
-    { label: 'Contains a number', met: /\d/.test(form.password) },
+    { label: 'At least 8 characters',    met: form.password.length >= 8 },
+    { label: 'Contains a number',         met: /\d/.test(form.password) },
     { label: 'Contains uppercase letter', met: /[A-Z]/.test(form.password) },
   ];
 
-  async function handleSubmit(e: React.FormEvent) {
+  // ── Step 1: Register ────────────────────────────────────────────────────────
+  async function handleRegisterSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -39,8 +50,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(form.username, form.email, form.password, accountType);
-      setSuccess(true);
-      setTimeout(() => navigate('/login'), 2000);
+      setStep('verify');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
@@ -48,21 +58,56 @@ export default function RegisterPage() {
     }
   }
 
+  // ── Step 2: Verify OTP ──────────────────────────────────────────────────────
+  async function handleVerifySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setVerifyError(null);
+    setVerifyLoad(true);
+    try {
+      await apiClient.verifyEmail(form.email, otp);
+      setVerifyOk(true);
+      setTimeout(() => navigate('/login'), 2500);
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : 'Invalid or expired OTP. Please try again.');
+    } finally {
+      setVerifyLoad(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    if (resendCool) return;
+    setVerifyError(null);
+    setResendMsg(null);
+    setResendCool(true);
+    try {
+      await apiClient.resendVerification(form.email);
+      setResendMsg('A new OTP has been sent to your email.');
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : 'Failed to resend OTP.');
+    } finally {
+      setTimeout(() => setResendCool(false), 30000);
+    }
+  }
+
   return (
     <div className="auth-page">
-      {/* Left panel */}
+      {/* ── Left hero panel ── */}
       <div className="auth-panel auth-panel--hero">
         <div className="auth-hero__content">
           <span className="auth-hero__badge">
-            {accountType === 'seller' ? 'Sell on ShopFlow' : 'Join Now'}
+            {step === 'verify' ? 'Almost there!' : accountType === 'seller' ? 'Sell on ShopFlow' : 'Join Now'}
           </span>
           <h1 className="auth-hero__title">
-            {accountType === 'seller'
+            {step === 'verify'
+              ? 'Verify your email address.'
+              : accountType === 'seller'
               ? 'Reach Thousands of Customers.'
               : 'Start Your Enterprise Journey Today.'}
           </h1>
           <p className="auth-hero__sub">
-            {accountType === 'seller'
+            {step === 'verify'
+              ? 'A 6-digit code was sent to your inbox. Enter it to activate your account.'
+              : accountType === 'seller'
               ? 'List your products, manage orders, and grow your business with our seller tools and real-time analytics.'
               : 'Create your account to unlock powerful procurement tools, real-time analytics, and enterprise-grade security.'}
           </p>
@@ -94,20 +139,12 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* ── Right form panel ── */}
       <div className="auth-panel auth-panel--form">
         <div className="auth-form-wrap">
-          {success ? (
-            <div className="auth-success" role="status">
-              <div className="auth-success__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="32" height="32">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-              <h2 className="auth-form-title">Account created!</h2>
-              <p className="auth-form-sub">Redirecting you to sign in…</p>
-            </div>
-          ) : (
+
+          {/* ════ STEP 1: REGISTER ════ */}
+          {step === 'register' && (
             <>
               <div className="auth-form-header">
                 <h2 className="auth-form-title">Create account</h2>
@@ -151,7 +188,7 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              <form className="auth-form" onSubmit={handleSubmit} noValidate>
+              <form className="auth-form" onSubmit={handleRegisterSubmit} noValidate>
                 {error && (
                   <div className="auth-error" role="alert">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
@@ -195,27 +232,27 @@ export default function RegisterPage() {
                     placeholder="Repeat your password" value={form.confirm} onChange={handleChange} required />
                 </div>
 
-                <button type="submit" className={`auth-submit${accountType === 'seller' ? ' auth-submit--seller' : ''}`} disabled={loading}>
+                <button
+                  type="submit"
+                  className={`auth-submit${accountType === 'seller' ? ' auth-submit--seller' : ''}`}
+                  disabled={loading}
+                  id="register-submit-btn"
+                >
                   {loading
                     ? <span className="auth-spinner" aria-label="Creating account…" />
                     : accountType === 'seller' ? 'Create Seller Account' : 'Create Account'}
                 </button>
               </form>
 
-              {/* ── Social login divider ── */}
+              {/* Social signup */}
               <div className="auth-divider">
                 <span className="auth-divider__line" />
                 <span className="auth-divider__text">or sign up with</span>
                 <span className="auth-divider__line" />
               </div>
 
-              {/* ── OAuth2 buttons ── */}
               <div className="auth-social">
-                <a
-                  href={`${BACKEND}/oauth2/authorization/google`}
-                  className="auth-social-btn auth-social-btn--google"
-                  aria-label="Sign up with Google"
-                >
+                <a href={`${BACKEND}/oauth2/authorization/google`} className="auth-social-btn auth-social-btn--google" aria-label="Sign up with Google">
                   <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -224,12 +261,7 @@ export default function RegisterPage() {
                   </svg>
                   Google
                 </a>
-
-                <a
-                  href={`${BACKEND}/oauth2/authorization/github`}
-                  className="auth-social-btn auth-social-btn--github"
-                  aria-label="Sign up with GitHub"
-                >
+                <a href={`${BACKEND}/oauth2/authorization/github`} className="auth-social-btn auth-social-btn--github" aria-label="Sign up with GitHub">
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
                     <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
                   </svg>
@@ -241,6 +273,93 @@ export default function RegisterPage() {
                 Already have an account?{' '}
                 <Link to="/login" className="auth-switch__link">Sign in</Link>
               </p>
+            </>
+          )}
+
+          {/* ════ STEP 2: EMAIL VERIFICATION ════ */}
+          {step === 'verify' && (
+            <>
+              {verifyOk ? (
+                <div className="auth-success" role="status">
+                  <div className="auth-success__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="32" height="32">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <h2 className="auth-form-title">Email verified!</h2>
+                  <p className="auth-form-sub">Your account is active. Redirecting you to sign in…</p>
+                </div>
+              ) : (
+                <>
+                  <div className="auth-form-header">
+                    <div className="auth-step-icon auth-step-icon--green">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="26" height="26" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                      </svg>
+                    </div>
+                    <h2 className="auth-form-title">Check your email</h2>
+                    <p className="auth-form-sub">
+                      We sent a 6-digit code to <strong>{form.email}</strong>.<br />
+                      It expires in 15 minutes.
+                    </p>
+                  </div>
+
+                  {resendMsg && (
+                    <div className="auth-info" role="status">
+                      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      {resendMsg}
+                    </div>
+                  )}
+
+                  <form className="auth-form" onSubmit={handleVerifySubmit} noValidate>
+                    {verifyError && (
+                      <div className="auth-error" role="alert">
+                        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {verifyError}
+                      </div>
+                    )}
+
+                    <div className="auth-field">
+                      <label htmlFor="verify-otp" className="auth-label">6-digit verification code</label>
+                      <input
+                        id="verify-otp"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        className="auth-input auth-input--otp"
+                        placeholder="• • • • • •"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        required
+                        autoFocus
+                        autoComplete="one-time-code"
+                      />
+                    </div>
+
+                    <button type="submit" className="auth-submit" disabled={verifyLoad || otp.length < 6} id="verify-otp-btn">
+                      {verifyLoad ? <span className="auth-spinner" aria-label="Verifying…" /> : 'Verify Email'}
+                    </button>
+                  </form>
+
+                  <p className="auth-switch">
+                    Didn't receive it?{' '}
+                    <button
+                      type="button"
+                      className={`auth-switch__link auth-resend-btn${resendCool ? ' auth-resend-btn--cool' : ''}`}
+                      onClick={handleResendOtp}
+                      disabled={resendCool}
+                    >
+                      {resendCool ? 'Resent! (wait 30s)' : 'Resend code'}
+                    </button>
+                  </p>
+                </>
+              )}
             </>
           )}
         </div>

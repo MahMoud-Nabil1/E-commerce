@@ -60,21 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     // Backend sets the HttpOnly cookie automatically in the response
-    const data = await apiClient.login(username, password);
-    // Build the user object from the login response
-    setUser({
-      id: data.id,
-      username: data.username,
-      email: data.email,
-      roles: data.roles,
-    });
-    // Fetch cart count after login
-    try {
-      const cart = await apiClient.getCart();
-      setCartCount(cart.products?.length ?? 0);
-    } catch {
-      setCartCount(0);
-    }
+    await apiClient.login(username, password);
+    // Always fetch the full user from the server after login so roles are
+    // guaranteed to be current — avoids stale-state issues when switching accounts.
+    await refreshUser();
   };
 
   const register = async (username: string, email: string, password: string, role = 'user') => {
@@ -83,11 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Clear local state immediately so no stale user is visible during the request
+    setUser(null);
+    setCartCount(0);
+    localStorage.removeItem('jwtToken');
     try {
       await apiClient.signout();
-    } finally {
-      setUser(null);
-      setCartCount(0);
+    } catch {
+      // Signout failed on the server side — local state is already cleared, that's fine
     }
   };
 

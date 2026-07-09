@@ -98,6 +98,7 @@ export default function ProductsPage() {
   }
 
   const hasFilters = keyword || category;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="products-page">
@@ -113,8 +114,22 @@ export default function ProductsPage() {
       </div>
 
       <div className="container products-layout">
+        {/* ── Mobile filter toggle ── */}
+        <button
+          type="button"
+          className="products-filter-toggle"
+          onClick={() => setSidebarOpen(v => !v)}
+          aria-expanded={sidebarOpen}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/>
+          </svg>
+          {sidebarOpen ? 'Hide Filters' : 'Show Filters'}
+          {hasFilters && <span className="filter-tag" style={{ marginLeft: 'auto' }}>Active</span>}
+        </button>
+
         {/* ── Sidebar ── */}
-        <aside className="products-sidebar">
+        <aside className={`products-sidebar${sidebarOpen ? ' products-sidebar--open' : ''}`}>
           {/* Search */}
           <form className="search-form" onSubmit={handleSearch} role="search">
             <label htmlFor="product-search" className="sr-only">Search products</label>

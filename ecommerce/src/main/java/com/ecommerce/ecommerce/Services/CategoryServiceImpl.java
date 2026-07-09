@@ -9,6 +9,7 @@ import com.ecommerce.ecommerce.Payload.CategoryResponse;
 import com.ecommerce.ecommerce.Repositories.CategoryRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -16,7 +17,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -30,6 +33,12 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private FileService fileService;
+
+    @Value("${project.image}")
+    private String path;
 
     // Returns paginated category list for public browsing.
     // Caches the response based on pageNumber, pageSize, sortBy, and sortOrder.
@@ -100,5 +109,20 @@ public class CategoryServiceImpl implements CategoryService {
 
         savedCategory = categoryRepository.save(savedCategory);
         return modelMapper.map(savedCategory, CategoryDTO.class);
+    }
+
+    // Updates category image. Uploads the image file and stores the filename.
+    // Evicts all cached categories to reflect the image update immediately.
+    @Override
+    @CacheEvict(value = "categories", allEntries = true)
+    public CategoryDTO updateCategoryImage(Long categoryId, MultipartFile image) throws IOException {
+        Category categoryFromDb = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
+
+        String fileName = fileService.uploadImage(path, image);
+        categoryFromDb.setImage(fileName);
+
+        Category updatedCategory = categoryRepository.save(categoryFromDb);
+        return modelMapper.map(updatedCategory, CategoryDTO.class);
     }
 }

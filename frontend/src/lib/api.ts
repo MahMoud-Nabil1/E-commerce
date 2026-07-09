@@ -73,6 +73,30 @@ class ApiClient {
     return res.data;
   }
 
+  /** POST /api/auth/verify-email — verifies email with OTP */
+  async verifyEmail(email: string, otp: string): Promise<{ message: string }> {
+    const res = await axiosClient.post<{ message: string }>('/api/auth/verify-email', { email, otp });
+    return res.data;
+  }
+
+  /** POST /api/auth/resend-verification — resends email verification OTP */
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const res = await axiosClient.post<{ message: string }>('/api/auth/resend-verification', { email });
+    return res.data;
+  }
+
+  /** POST /api/auth/forgot-password — requests a password reset OTP */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await axiosClient.post<{ message: string }>('/api/auth/forgot-password', { email });
+    return res.data;
+  }
+
+  /** POST /api/auth/reset-password — resets password using OTP */
+  async resetPassword(email: string, otp: string, newPassword: string): Promise<{ message: string }> {
+    const res = await axiosClient.post<{ message: string }>('/api/auth/reset-password', { email, otp, newPassword });
+    return res.data;
+  }
+
   /** GET /api/auth/user — returns current user details */
   async getUser(): Promise<User> {
     const res = await axiosClient.get<User>('/api/auth/user');
@@ -139,6 +163,11 @@ class ApiClient {
     return res.data;
   }
 
+  async updateAddress(addressId: number, address: Partial<Address>): Promise<Address> {
+    const res = await axiosClient.put<Address>(`/api/addresses/${addressId}`, address);
+    return res.data;
+  }
+
   async deleteAddress(addressId: number): Promise<string> {
     const res = await axiosClient.delete<string>(`/api/addresses/${addressId}`);
     return res.data;
@@ -184,6 +213,12 @@ class ApiClient {
     return res.data;
   }
 
+  /** GET /api/admin/products/mine — lists only the logged-in admin's own products */
+  async adminGetMyProducts(page = 0, size = 20): Promise<ProductResponse> {
+    const res = await axiosClient.get<ProductResponse>(`/api/admin/products/mine?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
+  }
+
   async adminAddProduct(categoryId: number, product: Omit<Product, 'productId'>): Promise<Product> {
     const res = await axiosClient.post<Product>(`/api/admin/categories/${categoryId}/product`, product);
     return res.data;
@@ -196,6 +231,16 @@ class ApiClient {
 
   async adminDeleteProduct(productId: number): Promise<Product> {
     const res = await axiosClient.delete<Product>(`/api/admin/products/${productId}`);
+    return res.data;
+  }
+
+  /** PUT /api/admin/products/{productId}/image — uploads a product image (admin) */
+  async adminUpdateProductImage(productId: number, file: File): Promise<Product> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await axiosClient.put<Product>(`/api/admin/products/${productId}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data;
   }
 
@@ -242,6 +287,16 @@ class ApiClient {
 
   async sellerDeleteProduct(productId: number): Promise<Product> {
     const res = await axiosClient.delete<Product>(`/api/seller/products/${productId}`);
+    return res.data;
+  }
+
+  /** PUT /api/seller/products/{productId}/image — uploads a product image (seller) */
+  async sellerUpdateProductImage(productId: number, file: File): Promise<Product> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await axiosClient.put<Product>(`/api/seller/products/${productId}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data;
   }
 

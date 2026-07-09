@@ -12,6 +12,9 @@ import com.ecommerce.ecommerce.Payload.ResetPasswordRequest;
 import com.ecommerce.ecommerce.Services.AuthService;
 import com.ecommerce.ecommerce.config.AppConstants;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -84,12 +87,17 @@ public class AuthController {
      * What it returns: A MessageResponse confirming logout, and clears the JWT cookie in the response header.
      */
     @PostMapping("/signout")
-    public ResponseEntity<?> signoutUser() {
+    public ResponseEntity<?> signoutUser(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
         ResponseCookie cookie = authService.logoutUser();
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(new MessageResponse("You've been signed out!"));
     }
+
 
     /**
      * What it does: Lists all user accounts that have the SELLER role, with pagination.

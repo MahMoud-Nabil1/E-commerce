@@ -309,3 +309,47 @@
   border-color: var(--secondary);
   color: var(--secondary);
 }
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 900px) {
+  .deals-hero {
+    padding: 36px 0 28px;
+  }
+
+  .deals-layout {
+    padding-top: 20px;
+    padding-bottom: 40px;
+    gap: 0;
+  }
+
+  /* Reuse products-filter-toggle class */
+  .products-filter-toggle {
+    display: flex;
+  }
+
+  .deals-sidebar {
+    position: static;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
+    margin-bottom: 0;
+  }
+
+  .deals-sidebar.products-sidebar--open {
+    max-height: 600px;
+    opacity: 1;
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .deals-hero__title {
+    font-size: 1.5rem;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}

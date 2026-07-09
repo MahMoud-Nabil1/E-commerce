@@ -86,6 +86,21 @@ public class ProductController {
         return new ResponseEntity<>(productResponse, HttpStatus.OK);
     }
 
+    /**
+     * What it does: Lists only the products owned by the currently logged-in admin. Admin access only.
+     * What it expects: Optional pagination parameters and valid admin authentication.
+     * What it returns: A ProductResponse with just this admin's listed products, with 200 OK.
+     */
+    @GetMapping("/admin/products/mine")
+    public ResponseEntity<ProductResponse> getMyProductsForAdmin(
+            @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_PRODUCTS_BY, required = false) String sortBy,
+            @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
+        ProductResponse productResponse = productService.getMyProductsForAdmin(pageNumber, pageSize, sortBy, sortOrder);
+        return new ResponseEntity<>(productResponse, HttpStatus.OK);
+    }
+
     // ======================== SELLER ENDPOINTS ========================
 
     /**

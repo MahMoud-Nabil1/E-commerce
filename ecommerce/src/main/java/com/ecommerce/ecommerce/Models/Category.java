@@ -29,6 +29,8 @@ public class Category {
     @Size(min = 5, message = "Category name must contain atleast 5 characters")
     private String categoryName;
 
+    private String image;
+
     // Cascade ALL: deleting a category removes its products too.
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     @ToString.Exclude

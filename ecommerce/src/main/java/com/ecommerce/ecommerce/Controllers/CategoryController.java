@@ -10,6 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api")
@@ -65,5 +68,17 @@ public class CategoryController {
             @PathVariable Long categoryId) {
         CategoryDTO savedCategoryDTO = categoryService.updateCategory(categoryDTO, categoryId);
         return new ResponseEntity<>(savedCategoryDTO, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Uploads or updates the image for a specific category. Admin access only.
+     * What it expects: The 'categoryId' in the URL path, and a multipart file with key 'image'.
+     * What it returns: The updated CategoryDTO object including the new image filename with 200 OK.
+     */
+    @PutMapping("/admin/categories/{categoryId}/image")
+    public ResponseEntity<CategoryDTO> updateCategoryImage(@PathVariable Long categoryId,
+            @RequestParam("image") MultipartFile image) throws IOException {
+        CategoryDTO updatedCategory = categoryService.updateCategoryImage(categoryId, image);
+        return new ResponseEntity<>(updatedCategory, HttpStatus.OK);
     }
 }

@@ -5,7 +5,7 @@ import { apiClient } from '../lib/api';
 import type { Product, Category, Order } from '../types';
 import './Dashboard.css';
 
-type Tab = 'overview' | 'products' | 'categories' | 'orders' | 'sellers';
+type Tab = 'overview' | 'products' | 'myproducts' | 'categories' | 'orders' | 'sellers';
 
 const ORDER_STATUSES = ['Accepted', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
@@ -34,11 +34,12 @@ export default function AdminDashboard() {
         </div>
         <nav className="sidebar__nav">
           {([
-            ['overview',   'Overview',   overviewIcon],
-            ['products',   'Products',   productIcon],
-            ['categories', 'Categories', categoryIcon],
-            ['orders',     'Orders',     orderIcon],
-            ['sellers',    'Sellers',    sellerIcon],
+            ['overview',    'Overview',      overviewIcon],
+            ['products',    'All Products',  productIcon],
+            ['myproducts',  'My Products',   myProductsIcon],
+            ['categories',  'Categories',    categoryIcon],
+            ['orders',      'Orders',        orderIcon],
+            ['sellers',     'Sellers',       sellerIcon],
           ] as [Tab, string, React.ReactNode][]).map(([key, label, icon]) => (
             <button key={key} className={`sidebar__link${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
               {icon}{label}
@@ -59,11 +60,37 @@ export default function AdminDashboard() {
       </aside>
       <main className="dashboard__main">
         {tab === 'overview'   && <OverviewTab />}
-        {tab === 'products'   && <ProductsTab />}
+        {tab === 'products'   && <ProductsTab currentUsername={user?.username ?? ''} />}
+        {tab === 'myproducts' && <AdminMyProductsTab />}
         {tab === 'categories' && <CategoriesTab />}
         {tab === 'orders'     && <OrdersTab />}
         {tab === 'sellers'    && <SellersTab />}
       </main>
+
+      {/* ── Mobile bottom nav ── */}
+      <nav className="dashboard__mobile-nav" aria-label="Dashboard navigation">
+        <div className="dashboard__mobile-nav-inner">
+          {([
+            ['overview',   'Overview',   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>],
+            ['products',   'Products',   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>],
+            ['orders',     'Orders',     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>],
+            ['categories', 'Categories', <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7h18M3 12h18M3 17h18"/></svg>],
+            ['sellers',    'Sellers',    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>],
+          ] as [Tab, string, React.ReactNode][]).map(([key, label, icon]) => (
+            <button key={key} className={`dashboard__mobile-nav-btn${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
+              {icon}{label}
+            </button>
+          ))}
+          <button className="dashboard__mobile-nav-btn" onClick={handleLogout}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
@@ -132,7 +159,7 @@ function StatCard({ icon, iconClass, label, value }: { icon: string; iconClass: 
   );
 }
 
-function ProductsTab() {
+function ProductsTab({ currentUsername }: { currentUsername: string }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -141,9 +168,11 @@ function ProductsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [uploadTarget, setUploadTarget] = useState<Product | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError('');
     apiClient.adminGetProducts(page, 15)
       .then(r => { setProducts(r.content); setTotal(r.totalElements); })
       .catch(() => setError('Failed to load products'))
@@ -161,33 +190,53 @@ function ProductsTab() {
   return (
     <>
       <div className="dashboard__header">
-        <h1 className="dashboard__title">Products</h1>
-        <p className="dashboard__subtitle">{total} products in the catalog</p>
+        <h1 className="dashboard__title">All Products</h1>
+        <p className="dashboard__subtitle">{total} products across all sellers</p>
       </div>
       {error && <div className="alert alert--error">{error}</div>}
       <div className="section-card">
         <div className="section-card__header">
-          <h2 className="section-card__title">All Products</h2>
+          <h2 className="section-card__title">Product Catalog</h2>
           <button className="btn btn--primary" onClick={() => { setEditing(null); setShowModal(true); }}>+ Add Product</button>
         </div>
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Discount</th><th>Stock</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Seller</th><th>Price</th><th>Discount</th><th>Stock</th><th>Actions</th></tr></thead>
             <tbody>
               {loading
-                ? <tr className="loading-row"><td colSpan={6}>Loading…</td></tr>
+                ? <tr className="loading-row"><td colSpan={7}>Loading…</td></tr>
                 : products.length === 0
-                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No products</td></tr>
+                  ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No products</td></tr>
                   : products.map(p => (
                     <tr key={p.productId}>
                       <td>#{p.productId}</td>
                       <td style={{ fontWeight: 600 }}>{p.productName}</td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{
+                            width: 26, height: 26, borderRadius: '50%',
+                            background: p.seller ? 'var(--secondary)' : 'var(--surface-variant)',
+                            color: p.seller ? 'var(--on-secondary)' : 'var(--on-surface-variant)',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 700, flexShrink: 0,
+                          }}>
+                            {p.seller?.username?.slice(0, 2).toUpperCase() ?? '?'}
+                          </span>
+                          <span style={{ fontSize: 13, color: p.seller ? 'inherit' : 'var(--on-surface-variant)', fontStyle: p.seller ? 'normal' : 'italic' }}>
+                            {p.seller?.username ?? 'Unassigned'}
+                          </span>
+                        </span>
+                      </td>
                       <td>${p.price?.toFixed(2)}</td>
                       <td>{p.discount}%</td>
                       <td><span className={`badge ${p.quantity > 0 ? 'badge--green' : 'badge--red'}`}>{p.quantity > 0 ? p.quantity : 'Out'}</span></td>
                       <td>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button className="btn btn--outline btn--sm" onClick={() => { setEditing(p); setShowModal(true); }}>Edit</button>
+                          {/* Only own products: admin can upload image only for their own listings */}
+                          {p.seller?.username === currentUsername && (
+                            <button className="btn btn--outline btn--sm" style={{ color: 'var(--primary)' }} onClick={() => setUploadTarget(p)}>📷 Image</button>
+                          )}
                           <button className="btn btn--danger btn--sm" onClick={() => handleDelete(p.productId)}>Delete</button>
                         </div>
                       </td>
@@ -203,6 +252,88 @@ function ProductsTab() {
         </div>
       </div>
       {showModal && <ProductModal product={editing} categories={categories} isAdmin onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load(); }} />}
+      {uploadTarget && <ImageUploadModal product={uploadTarget} isAdmin onClose={() => setUploadTarget(null)} onSaved={() => { setUploadTarget(null); load(); }} />}
+    </>
+  );
+}
+
+/* ── Admin My Products Tab ───────────────────────────────────────────────── */
+function AdminMyProductsTab() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [uploadTarget, setUploadTarget] = useState<Product | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError('');
+    // Uses the dedicated admin "my products" endpoint to fetch only this admin's own products
+    apiClient.adminGetMyProducts(page, 15)
+      .then(r => { setProducts(r.content); setTotal(r.totalElements); })
+      .catch(() => setError('Failed to load your products'))
+      .finally(() => setLoading(false));
+  }, [page]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { apiClient.adminGetCategories(0, 100).then(r => setCategories(r.content)).catch(() => {}); }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete this product?')) return;
+    try { await apiClient.adminDeleteProduct(id); load(); } catch { setError('Delete failed'); }
+  };
+
+  return (
+    <>
+      <div className="dashboard__header">
+        <h1 className="dashboard__title">My Products</h1>
+        <p className="dashboard__subtitle">{total} products listed by you</p>
+      </div>
+      {error && <div className="alert alert--error">{error}</div>}
+      <div className="section-card">
+        <div className="section-card__header">
+          <h2 className="section-card__title">My Listings</h2>
+          <button className="btn btn--primary" onClick={() => { setEditing(null); setShowModal(true); }}>+ Add Product</button>
+        </div>
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Discount</th><th>Stock</th><th>Actions</th></tr></thead>
+            <tbody>
+              {loading
+                ? <tr className="loading-row"><td colSpan={6}>Loading…</td></tr>
+                : products.length === 0
+                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>You haven't listed any products yet.</td></tr>
+                  : products.map(p => (
+                    <tr key={p.productId}>
+                      <td>#{p.productId}</td>
+                      <td style={{ fontWeight: 600 }}>{p.productName}</td>
+                      <td>${p.price?.toFixed(2)}</td>
+                      <td>{p.discount}%</td>
+                      <td><span className={`badge ${p.quantity > 0 ? 'badge--green' : 'badge--red'}`}>{p.quantity > 0 ? p.quantity : 'Out'}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button className="btn btn--outline btn--sm" onClick={() => { setEditing(p); setShowModal(true); }}>Edit</button>
+                          <button className="btn btn--outline btn--sm" style={{ color: 'var(--primary)' }} onClick={() => setUploadTarget(p)}>📷 Image</button>
+                          <button className="btn btn--danger btn--sm" onClick={() => handleDelete(p.productId)}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="pagination">
+          <button className="btn btn--outline btn--sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
+          <span>Page {page + 1}</span>
+          <button className="btn btn--outline btn--sm" disabled={(page + 1) * 15 >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
+        </div>
+      </div>
+      {showModal && <ProductModal product={editing} categories={categories} isAdmin onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load(); }} />}
+      {uploadTarget && <ImageUploadModal product={uploadTarget} isAdmin onClose={() => setUploadTarget(null)} onSaved={() => { setUploadTarget(null); load(); }} />}
     </>
   );
 }
@@ -312,23 +443,48 @@ function OrdersTab() {
         <div className="section-card__header"><h2 className="section-card__title">All Orders</h2></div>
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr><th>ID</th><th>Customer</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Update</th></tr></thead>
+            <thead><tr><th>ID</th><th>Customer</th><th>Date</th><th>Products</th><th>Address</th><th>Total</th><th>Status</th><th>Update</th></tr></thead>
             <tbody>
               {loading
-                ? <tr className="loading-row"><td colSpan={7}>Loading…</td></tr>
+                ? <tr className="loading-row"><td colSpan={8}>Loading…</td></tr>
                 : orders.length === 0
-                  ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No orders</td></tr>
-                  : orders.map(o => (
+                  ? <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No orders</td></tr>
+                  : orders.map(o => {
+                    const addr = o.address;
+                    const addrLine = addr
+                      ? [addr.street, addr.buildingName, addr.city, addr.state, addr.country, addr.pincode]
+                          .filter(Boolean).join(', ')
+                      : '—';
+                    return (
                     <tr key={o.orderId}>
-                      <td>#{o.orderId}</td><td>{o.email}</td><td>{o.orderDate}</td>
-                      <td>{o.orderItems?.length ?? 0}</td>
+                      <td>#{o.orderId}</td>
+                      <td>{o.email}</td>
+                      <td>{o.orderDate}</td>
+                      <td>
+                        {o.orderItems && o.orderItems.length > 0 ? (
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {o.orderItems.map((item, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--secondary)', flexShrink: 0, display: 'inline-block' }} />
+                                <span style={{ fontWeight: 500, fontSize: 13 }}>{item.product?.productName}</span>
+                                {item.quantity > 1 && (
+                                  <span style={{ fontSize: 11, color: 'var(--on-surface-variant)', background: 'var(--surface-container)', borderRadius: 4, padding: '1px 5px' }}>×{item.quantity}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : <span style={{ color: 'var(--on-surface-variant)' }}>—</span>}
+                      </td>
+                      <td style={{ fontSize: 13, color: 'var(--on-surface-variant)', maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4 }}>
+                        {addrLine}
+                      </td>
                       <td>${o.totalAmount?.toFixed(2)}</td>
                       <td><span className={`badge ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span></td>
                       <td>
                         {o.orderStatus === 'PENDING_PAYMENT' ? (
-                          <button 
-                            className="btn btn--primary btn--sm" 
-                            disabled={updatingId === o.orderId} 
+                          <button
+                            className="btn btn--primary btn--sm"
+                            disabled={updatingId === o.orderId}
                             onClick={() => handleApprovePayment(o.orderId)}
                           >
                             Approve
@@ -342,7 +498,8 @@ function OrdersTab() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
             </tbody>
           </table>
         </div>
@@ -545,11 +702,126 @@ export function CategoryModal({ category, onClose, onSaved }: CategoryModalProps
   );
 }
 
+/* ── Image Upload Modal ───────────────────────────────────────────────────── */
+interface ImageUploadModalProps {
+  product: Product;
+  isAdmin: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+export function ImageUploadModal({ product, isAdmin, onClose, onSaved }: ImageUploadModalProps) {
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(product.image ?? null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_MB = 10;
+
+  const pickFile = (f: File) => {
+    if (!ALLOWED.includes(f.type)) { setError('Only JPEG, PNG, WebP, or GIF images are allowed.'); return; }
+    if (f.size > MAX_MB * 1024 * 1024) { setError(`File must be smaller than ${MAX_MB} MB.`); return; }
+    setError('');
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setSuccess(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) pickFile(dropped);
+  };
+
+  const handleUpload = async () => {
+    if (!file) { setError('Please select an image first.'); return; }
+    setUploading(true); setError('');
+    try {
+      if (isAdmin) await apiClient.adminUpdateProductImage(product.productId, file);
+      else await apiClient.sellerUpdateProductImage(product.productId, file);
+      setSuccess(true);
+      setTimeout(() => onSaved(), 800);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed. Please try again.');
+    } finally { setUploading(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 480 }}>
+        <h2 className="modal__title">📷 Product Image</h2>
+        <p style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginBottom: 16 }}>
+          Uploading for: <strong>{product.productName}</strong>
+        </p>
+        {error && <div className="alert alert--error">{error}</div>}
+        {success && <div className="alert alert--success">✅ Image uploaded successfully!</div>}
+
+        {/* Drop Zone */}
+        <div
+          className={`img-upload-zone${dragging ? ' img-upload-zone--active' : ''}`}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+        >
+          {preview ? (
+            <div className="img-upload-preview">
+              <img src={preview} alt="Preview" className="img-upload-preview__img" />
+              <div className="img-upload-preview__overlay">
+                <span>Click or drag to replace</span>
+              </div>
+            </div>
+          ) : (
+            <div className="img-upload-placeholder">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <p style={{ margin: '10px 0 4px', fontWeight: 600 }}>Drop image here</p>
+              <p style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>or click to browse · JPEG, PNG, WebP, GIF · max {MAX_MB} MB</p>
+            </div>
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ALLOWED.join(',')}
+          style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) pickFile(f); }}
+        />
+
+        {file && (
+          <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 8, textAlign: 'center' }}>
+            Selected: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(0)} KB)
+          </p>
+        )}
+
+        <div className="modal__footer">
+          <button className="btn btn--outline" onClick={onClose} disabled={uploading}>Cancel</button>
+          <button className="btn btn--primary" onClick={handleUpload} disabled={!file || uploading}>
+            {uploading ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="upload-spinner" />Uploading…
+              </span>
+            ) : '⬆ Upload Image'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Icons ────────────────────────────────────────────────────────────────── */
 import React from 'react';
-const overviewIcon = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
-const productIcon  = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>;
-const categoryIcon = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>;
-const orderIcon    = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>;
-const sellerIcon   = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
-const logoutIcon   = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+const overviewIcon    = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
+const productIcon     = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>;
+const myProductsIcon  = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>;
+const categoryIcon    = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>;
+const orderIcon       = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>;
+const sellerIcon      = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
+const logoutIcon      = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+

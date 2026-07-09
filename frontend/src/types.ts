@@ -97,9 +97,16 @@ export interface Address {
 
 export interface OrderItem {
   orderItemId: number;
-  productId: number;
-  productName: string;
-  image?: string;
+  product: {
+    productId: number;
+    productName: string;
+    image?: string;
+    description?: string;
+    quantity?: number;
+    price?: number;
+    discount?: number;
+    specialPrice?: number;
+  };
   quantity: number;
   discount: number;
   orderedProductPrice: number;

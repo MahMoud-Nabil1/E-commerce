@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import type { Product, Category, Order } from '../types';
-import { ProductModal } from './AdminDashboard';
+import { ProductModal, ImageUploadModal } from './AdminDashboard';
 import './Dashboard.css';
 
 type Tab = 'overview' | 'products' | 'orders';
@@ -61,6 +61,29 @@ export default function SellerDashboard() {
         {tab === 'products' && <SellerProductsTab />}
         {tab === 'orders'   && <SellerOrdersTab />}
       </main>
+
+      {/* ── Mobile bottom nav ── */}
+      <nav className="dashboard__mobile-nav" aria-label="Dashboard navigation">
+        <div className="dashboard__mobile-nav-inner">
+          {([
+            ['overview', 'Overview', <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>],
+            ['products', 'Products', <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>],
+            ['orders',   'Orders',   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>],
+          ] as [Tab, string, React.ReactNode][]).map(([key, label, icon]) => (
+            <button key={key} className={`dashboard__mobile-nav-btn${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
+              {icon}{label}
+            </button>
+          ))}
+          <button className="dashboard__mobile-nav-btn" onClick={handleLogout}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
@@ -256,6 +279,7 @@ function SellerProductsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [uploadTarget, setUploadTarget] = useState<Product | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -303,6 +327,7 @@ function SellerProductsTab() {
                       <td>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button className="btn btn--outline btn--sm" onClick={() => { setEditing(p); setShowModal(true); }}>Edit</button>
+                          <button className="btn btn--outline btn--sm" style={{ color: 'var(--primary)' }} onClick={() => setUploadTarget(p)}>📷 Image</button>
                           <button className="btn btn--danger btn--sm" onClick={() => handleDelete(p.productId)}>Delete</button>
                         </div>
                       </td>
@@ -318,6 +343,7 @@ function SellerProductsTab() {
         </div>
       </div>
       {showModal && <ProductModal product={editing} categories={categories} isAdmin={false} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load(); }} />}
+      {uploadTarget && <ImageUploadModal product={uploadTarget} isAdmin={false} onClose={() => setUploadTarget(null)} onSaved={() => { setUploadTarget(null); load(); }} />}
     </>
   );
 }
@@ -366,23 +392,46 @@ function SellerOrdersTab() {
         <div className="section-card__header"><h2 className="section-card__title">Order List</h2></div>
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr><th>ID</th><th>Customer</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Update</th></tr></thead>
+            <thead><tr><th>ID</th><th>Customer</th><th>Date</th><th>Products</th><th>Address</th><th>Total</th><th>Status</th><th>Update</th></tr></thead>
             <tbody>
               {loading
-                ? <tr className="loading-row"><td colSpan={7}>Loading…</td></tr>
+                ? <tr className="loading-row"><td colSpan={8}>Loading…</td></tr>
                 : orders.length === 0
-                  ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No orders yet</td></tr>
-                  : orders.map(o => (
+                  ? <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No orders yet</td></tr>
+                  : orders.map(o => {
+                    const addr = o.address;
+                    const addrLine = addr
+                      ? [addr.street, addr.buildingName, addr.city, addr.state, addr.country, addr.pincode]
+                          .filter(Boolean).join(', ')
+                      : '—';
+                    return (
                     <tr key={o.orderId}>
                       <td>#{o.orderId}</td><td>{o.email}</td><td>{o.orderDate}</td>
-                      <td>{o.orderItems?.length ?? 0}</td>
+                      <td>
+                        {o.orderItems && o.orderItems.length > 0 ? (
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {o.orderItems.map((item, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--secondary)', flexShrink: 0, display: 'inline-block' }} />
+                                <span style={{ fontWeight: 500, fontSize: 13 }}>{item.product?.productName}</span>
+                                {item.quantity > 1 && (
+                                  <span style={{ fontSize: 11, color: 'var(--on-surface-variant)', background: 'var(--surface-container)', borderRadius: 4, padding: '1px 5px' }}>×{item.quantity}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : <span style={{ color: 'var(--on-surface-variant)' }}>—</span>}
+                      </td>
+                      <td style={{ fontSize: 13, color: 'var(--on-surface-variant)', maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4 }}>
+                        {addrLine}
+                      </td>
                       <td>${o.totalAmount?.toFixed(2)}</td>
                       <td><span className={`badge ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span></td>
                       <td>
                         {o.orderStatus === 'PENDING_PAYMENT' ? (
-                          <button 
-                            className="btn btn--primary btn--sm" 
-                            disabled={updatingId === o.orderId} 
+                          <button
+                            className="btn btn--primary btn--sm"
+                            disabled={updatingId === o.orderId}
                             onClick={() => handleApprovePayment(o.orderId)}
                           >
                             Approve
@@ -396,7 +445,8 @@ function SellerOrdersTab() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
             </tbody>
           </table>
         </div>

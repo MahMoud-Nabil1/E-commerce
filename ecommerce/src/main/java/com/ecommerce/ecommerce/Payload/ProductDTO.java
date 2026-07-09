@@ -39,4 +39,15 @@ public class ProductDTO {
     private double discount;
 
     private double specialPrice;
+
+    // Seller info embedded in the response so the frontend can display who listed this product.
+    private SellerInfo seller;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SellerInfo {
+        private Long userId;
+        private String username;
+    }
 }

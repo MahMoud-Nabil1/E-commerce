@@ -76,7 +76,26 @@ public class ProductServiceImpl implements ProductService {
         product.setSpecialPrice(specialPrice);
 
         Product savedProduct = productRepository.save(product);
-        return modelMapper.map(savedProduct, ProductDTO.class);
+        return toDTO(savedProduct);
+    }
+
+    // Maps Product to ProductDTO, populates seller info and full image URL.
+    private ProductDTO toDTO(Product product) {
+        System.out.println("toDTO called for product ID: " + product.getProductId() + ", productName: " + product.getProductName());
+        System.out.println("product.getUser() is: " + (product.getUser() == null ? "NULL" : product.getUser().getUsername() + " (ID: " + product.getUser().getUserId() + ")"));
+        ProductDTO dto = modelMapper.map(product, ProductDTO.class);
+        if (product.getImage() != null) {
+            dto.setImage(constructImageUrl(product.getImage()));
+        }
+        if (product.getUser() != null) {
+            dto.setSeller(new ProductDTO.SellerInfo(
+                    product.getUser().getUserId(),
+                    product.getUser().getUsername()));
+            System.out.println("Set seller DTO to: " + dto.getSeller());
+        } else {
+            System.out.println("Seller was NOT set because product.getUser() is null");
+        }
+        return dto;
     }
 
     // Public product listing with optional keyword and category filters.
@@ -110,11 +129,7 @@ public class ProductServiceImpl implements ProductService {
         List<Product> products = pageProducts.getContent();
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> {
-                    ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
-                    productDTO.setImage(constructImageUrl(product.getImage()));
-                    return productDTO;
-                })
+                .map(this::toDTO)
                 .toList();
 
         ProductResponse productResponse = new ProductResponse();
@@ -136,8 +151,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
 
-        ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
-        productDTO.setImage(constructImageUrl(product.getImage()));
+        ProductDTO productDTO = toDTO(product);
         return productDTO;
     }
 
@@ -155,7 +169,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductDTO> productDTOS = products.stream()
                 .map(product -> {
-                    ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
+                    ProductDTO productDTO = toDTO(product);
                     productDTO.setImage(constructImageUrl(product.getImage()));
                     return productDTO;
                 })
@@ -187,11 +201,34 @@ public class ProductServiceImpl implements ProductService {
         List<Product> products = pageProducts.getContent();
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> {
-                    ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
-                    productDTO.setImage(constructImageUrl(product.getImage()));
-                    return productDTO;
-                })
+                .map(this::toDTO)
+                .toList();
+
+        ProductResponse productResponse = new ProductResponse();
+        productResponse.setContent(productDTOS);
+        productResponse.setPageNumber(pageProducts.getNumber());
+        productResponse.setPageSize(pageProducts.getSize());
+        productResponse.setTotalElements(pageProducts.getTotalElements());
+        productResponse.setTotalPages(pageProducts.getTotalPages());
+        productResponse.setLastPage(pageProducts.isLast());
+        return productResponse;
+    }
+
+    // Returns only products owned by the currently logged-in admin (mirrors seller logic on admin route).
+    @Override
+    public ProductResponse getMyProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy,
+                                                  String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+
+        User user = authUtil.loggedInUser();
+        Page<Product> pageProducts = productRepository.findByUser(user, pageDetails);
+
+        List<ProductDTO> productDTOS = pageProducts.getContent().stream()
+                .map(this::toDTO)
                 .toList();
 
         ProductResponse productResponse = new ProductResponse();
@@ -233,11 +270,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> {
-                    ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
-                    productDTO.setImage(constructImageUrl(product.getImage()));
-                    return productDTO;
-                })
+                .map(this::toDTO)
                 .toList();
 
         ProductResponse productResponse = new ProductResponse();
@@ -267,11 +300,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<Product> products = pageProducts.getContent();
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> {
-                    ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
-                    productDTO.setImage(constructImageUrl(product.getImage()));
-                    return productDTO;
-                })
+                .map(this::toDTO)
                 .toList();
 
         if (products.isEmpty()) {
@@ -310,7 +339,7 @@ public class ProductServiceImpl implements ProductService {
 
         Product savedProduct = productRepository.save(productFromDb);
 
-        return modelMapper.map(savedProduct, ProductDTO.class);
+        return toDTO(savedProduct);
     }
 
     // Deletes product from DB. Cascades to cart items.
@@ -322,7 +351,7 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
 
         productRepository.delete(product);
-        return modelMapper.map(product, ProductDTO.class);
+        return toDTO(product);
     }
 
     // Saves uploaded image to disk, updates product record.
@@ -337,6 +366,6 @@ public class ProductServiceImpl implements ProductService {
         productFromDb.setImage(fileName);
 
         Product updatedProduct = productRepository.save(productFromDb);
-        return modelMapper.map(updatedProduct, ProductDTO.class);
+        return toDTO(updatedProduct);
     }
 }

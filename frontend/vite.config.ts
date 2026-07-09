@@ -11,6 +11,15 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         cookieDomainRewrite: 'localhost',
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            if (err.message.includes('ECONNREFUSED')) {
+              console.warn('[vite-proxy] Backend is currently starting up (ECONNREFUSED). Waiting for connection...');
+            } else {
+              console.error('[vite-proxy] Proxy error:', err);
+            }
+          });
+        },
       },
     },
   },

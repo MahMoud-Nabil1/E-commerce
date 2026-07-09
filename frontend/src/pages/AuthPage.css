@@ -448,3 +448,152 @@
   border-color: #1a1e22;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
+
+/* ── Password label row (label + forgot link) ── */
+.auth-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.auth-forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+  line-height: 1;
+}
+
+.auth-forgot-link:hover {
+  opacity: 0.75;
+}
+
+/* ── Input wrapper with trailing icon ── */
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input--icon {
+  padding-right: 42px;
+  width: 100%;
+}
+
+.auth-eye-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color var(--transition-fast);
+}
+
+.auth-eye-btn:hover {
+  color: var(--on-surface);
+}
+
+/* ── OTP digit input ── */
+.auth-input--otp {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-align: center;
+  padding: 14px 20px;
+}
+
+.auth-input--otp::placeholder {
+  font-size: 1rem;
+  letter-spacing: 0.4em;
+  font-weight: 400;
+}
+
+/* ── Back button ── */
+.auth-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  margin-bottom: 28px;
+  transition: color var(--transition-fast);
+}
+
+.auth-back-btn:hover {
+  color: var(--on-surface);
+}
+
+/* ── Step icon (email / lock circle) ── */
+.auth-step-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.auth-step-icon--blue {
+  background: rgba(38, 77, 217, 0.1);
+  color: var(--secondary);
+}
+
+.auth-step-icon--purple {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
+.auth-step-icon--green {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+
+/* ── Info / success banner ── */
+.auth-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(38, 77, 217, 0.07);
+  border: 1px solid rgba(38, 77, 217, 0.18);
+  color: var(--secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+/* ── Resend button ── */
+.auth-resend-btn {
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-resend-btn--cool {
+  opacity: 0.5;
+  cursor: default;
+  color: var(--on-surface-variant) !important;
+}

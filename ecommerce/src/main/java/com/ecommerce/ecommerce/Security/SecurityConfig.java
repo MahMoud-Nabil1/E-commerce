@@ -27,7 +27,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.web.cors.CorsConfigurationSource;
+
 
 import java.util.Set;
 
@@ -64,19 +66,22 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                // Do not store the SecurityContext in the HTTP Session to keep REST APIs stateless
+                .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
                 // No server-side sessions; JWT is the source of truth.
                 // NOTE: OAuth2 login requires a brief session to store the state/nonce
                 // parameters during the redirect flow. We use IF_REQUIRED so Spring
                 // creates a session only for that transient exchange — it is discarded
                 // immediately after the success handler issues the JWT cookie.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         // OAuth2 redirect endpoints must be public.
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Sellers only — admins manage via /api/admin/**, not /api/seller/**
-                        .requestMatchers("/api/seller/**").hasRole("SELLER")
+                        // Sellers and Admins can access seller APIs to manage their own products
+                        .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
