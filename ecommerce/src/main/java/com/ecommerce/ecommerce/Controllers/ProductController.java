@@ -5,14 +5,24 @@ import com.ecommerce.ecommerce.config.AppConstants;
 import com.ecommerce.ecommerce.Payload.ProductDTO;
 import com.ecommerce.ecommerce.Payload.ProductResponse;
 import com.ecommerce.ecommerce.Services.ProductService;
+import com.ecommerce.ecommerce.Services.FileService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api")
@@ -20,6 +30,12 @@ public class ProductController {
 
     @Autowired
     ProductService productService;
+
+    @Autowired
+    private FileService fileService;
+
+    @Value("${project.image}")
+    private String path;
 
     // ======================== ADMIN ENDPOINTS ========================
 
@@ -227,5 +243,29 @@ public class ProductController {
         ProductResponse productResponse = productService.searchProductByKeyword(keyword, pageNumber, pageSize, sortBy,
                 sortOrder);
         return new ResponseEntity<>(productResponse, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Retrieves a product's image by filename. Public access.
+     * What it expects: 'imageName' as a path variable.
+     * What it returns: The image bytes directly with the correct content-type, or a default gray placeholder if not found.
+     */
+    @GetMapping("/public/products/image/{imageName}")
+    public void getProductImage(@PathVariable String imageName, HttpServletResponse response) throws IOException {
+        try {
+            InputStream resource = fileService.getResource(path, imageName);
+            String mimeType = Files.probeContentType(Paths.get(path + File.separator + imageName));
+            if (mimeType == null) {
+                mimeType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            }
+            response.setContentType(mimeType);
+            StreamUtils.copy(resource, response.getOutputStream());
+        } catch (FileNotFoundException e) {
+            response.setContentType(MediaType.IMAGE_PNG_VALUE);
+            byte[] placeholder = java.util.Base64.getDecoder().decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            );
+            response.getOutputStream().write(placeholder);
+        }
     }
 }

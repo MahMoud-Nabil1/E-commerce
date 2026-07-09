@@ -79,14 +79,11 @@ public class ProductServiceImpl implements ProductService {
         return toDTO(savedProduct);
     }
 
-    // Maps Product to ProductDTO, populates seller info and full image URL.
+    // Maps Product to ProductDTO, populates seller info.
     private ProductDTO toDTO(Product product) {
         System.out.println("toDTO called for product ID: " + product.getProductId() + ", productName: " + product.getProductName());
         System.out.println("product.getUser() is: " + (product.getUser() == null ? "NULL" : product.getUser().getUsername() + " (ID: " + product.getUser().getUserId() + ")"));
         ProductDTO dto = modelMapper.map(product, ProductDTO.class);
-        if (product.getImage() != null) {
-            dto.setImage(constructImageUrl(product.getImage()));
-        }
         if (product.getUser() != null) {
             dto.setSeller(new ProductDTO.SellerInfo(
                     product.getUser().getUserId(),
@@ -168,11 +165,7 @@ public class ProductServiceImpl implements ProductService {
         List<Product> products = pageProducts.getContent();
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(product -> {
-                    ProductDTO productDTO = toDTO(product);
-                    productDTO.setImage(constructImageUrl(product.getImage()));
-                    return productDTO;
-                })
+                .map(this::toDTO)
                 .toList();
 
         ProductResponse productResponse = new ProductResponse();

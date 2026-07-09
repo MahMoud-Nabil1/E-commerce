@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
+import { apiClient, API_BASE } from '../lib/api';
 import type { Product, Category, Order } from '../types';
 import './Dashboard.css';
 
@@ -712,7 +712,13 @@ interface ImageUploadModalProps {
 
 export function ImageUploadModal({ product, isAdmin, onClose, onSaved }: ImageUploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(product.image ?? null);
+  const [preview, setPreview] = useState<string | null>(
+    product.image
+      ? (product.image.startsWith('http') || product.image.startsWith('blob:')
+        ? product.image
+        : `${API_BASE}/api/public/products/image/${product.image}`)
+      : null
+  );
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
