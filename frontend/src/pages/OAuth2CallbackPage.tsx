@@ -33,7 +33,7 @@ export default function OAuth2CallbackPage() {
       const msg = error ? decodeURIComponent(error) : 'OAuth2 login failed. Please try again.';
       navigate(`/login?oauthError=${encodeURIComponent(msg)}`, { replace: true });
     }
-  }, []);
+  }, [navigate, refreshUser, searchParams]);
 
   return (
     <div style={{

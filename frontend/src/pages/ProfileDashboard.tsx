@@ -77,15 +77,21 @@ export function ProfileDashboard() {
   /* ── Delete ── */
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this address?')) return;
-    try { await apiClient.deleteAddress(id); setAddresses(p => p.filter(a => a.addressId !== id)); if (editingId === id) setEditingId(null); } catch {}
+    try {
+      await apiClient.deleteAddress(id);
+      setAddresses(p => p.filter(a => a.addressId !== id));
+      if (editingId === id) setEditingId(null);
+    } catch {
+      // Ignored: delete failure is handled or is non-blocking
+    }
   };
 
   /* ── Derived stats ── */
   const totalSpent   = orders.filter(o => o.orderStatus !== 'Cancelled').reduce((s, o) => s + (o.totalAmount ?? 0), 0);
   const delivered    = orders.filter(o => o.orderStatus === 'Delivered').length;
   const initials     = (user?.username ?? 'U').slice(0, 2).toUpperCase();
-  const joinedDate   = (user as any)?.joinedDate ?? null;
-  const displayName  = (user as any)?.name || user?.username;
+  const joinedDate   = user?.joinedDate ?? null;
+  const displayName  = user?.name || user?.username;
 
   const statusColor = (s: string) => {
     if (s === 'Delivered') return '#059669';
