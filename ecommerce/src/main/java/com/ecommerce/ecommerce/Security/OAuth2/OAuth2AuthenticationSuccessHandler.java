@@ -48,8 +48,14 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
         response.addHeader("Set-Cookie", jwtCookie.toString());
 
+        // Also generate the raw token string and append as a query param so the frontend
+        // can save it in localStorage as a backup (vital for cross-origin deployments on Render
+        // where modern browsers block third-party/cross-site HttpOnly cookies).
+        String jwtToken = jwtUtils.generateTokenFromUsername(userDetails.getUsername());
+
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("success", "true")
+                .queryParam("token", jwtToken)
                 .build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);

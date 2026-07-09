@@ -19,8 +19,12 @@ export default function OAuth2CallbackPage() {
 
     const success = searchParams.get('success');
     const error = searchParams.get('error');
+    const token = searchParams.get('token');
 
     if (success === 'true') {
+      if (token) {
+        localStorage.setItem('jwtToken', token);
+      }
       // Cookie is already set — refresh the auth context so the app knows
       // who is logged in, then redirect to the role-based landing page.
       refreshUser().then(() => {
