@@ -11,8 +11,9 @@ import com.ecommerce.ecommerce.Payload.ProductResponse;
 import com.ecommerce.ecommerce.Repositories.CategoryRepository;
 import com.ecommerce.ecommerce.Repositories.ProductRepository;
 import com.ecommerce.ecommerce.util.AuthUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,28 +28,19 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
-    @Autowired
-    private ProductRepository productRepository;
 
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private FileService fileService;
-
-    @Autowired
-    AuthUtil authUtil;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+    private final ModelMapper modelMapper;
+    private final FileService fileService;
+    private final AuthUtil authUtil;
 
     @Value("${project.image}")
     private String path;
-
-    @Value("${image.base.url}")
-    private String imageBaseUrl;
 
     // Creates product under a category. Seller is auto-assigned.
     // Evicts product and category cache to keep catalogs up-to-date.
@@ -81,16 +73,11 @@ public class ProductServiceImpl implements ProductService {
 
     // Maps Product to ProductDTO, populates seller info.
     private ProductDTO toDTO(Product product) {
-        System.out.println("toDTO called for product ID: " + product.getProductId() + ", productName: " + product.getProductName());
-        System.out.println("product.getUser() is: " + (product.getUser() == null ? "NULL" : product.getUser().getUsername() + " (ID: " + product.getUser().getUserId() + ")"));
         ProductDTO dto = modelMapper.map(product, ProductDTO.class);
         if (product.getUser() != null) {
             dto.setSeller(new ProductDTO.SellerInfo(
                     product.getUser().getUserId(),
                     product.getUser().getUsername()));
-            System.out.println("Set seller DTO to: " + dto.getSeller());
-        } else {
-            System.out.println("Seller was NOT set because product.getUser() is null");
         }
         return dto;
     }
@@ -101,7 +88,7 @@ public class ProductServiceImpl implements ProductService {
     @Cacheable(value = "products", key = "#pageNumber + '-' + #pageSize + '-' + #sortBy + '-' + #sortOrder + '-' + (#keyword != null ? #keyword : 'none') + '-' + (#category != null ? #category : 'all')")
     public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder,
                                           String keyword, String category) {
-        System.out.println("-----> [CACHE MISS] Fetching All Products from MySQL Database! <-----");
+        log.debug("Cache miss: fetching all products from database");
 
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
@@ -143,7 +130,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Cacheable(value = "products", key = "#productId")
     public ProductDTO getProductById(Long productId) {
-        System.out.println("-----> [CACHE MISS] Fetching Product ID " + productId + " from MySQL Database! <-----");
+        log.debug("Cache miss: fetching product ID {} from database", productId);
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
@@ -234,17 +221,12 @@ public class ProductServiceImpl implements ProductService {
         return productResponse;
     }
 
-    // Builds full image URL from filename for frontend display.
-    private String constructImageUrl(String imageName) {
-        return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
-    }
-
     // Lists products within a specific category with caching.
     @Override
     @Cacheable(value = "products", key = "'cat-' + #categoryId + '-' + #pageNumber + '-' + #pageSize + '-' + #sortBy + '-' + #sortOrder")
     public ProductResponse searchByCategory(Long categoryId, Integer pageNumber, Integer pageSize, String sortBy,
                                             String sortOrder) {
-        System.out.println("-----> [CACHE MISS] Fetching Category " + categoryId + " Products from MySQL Database! <-----");
+        log.debug("Cache miss: fetching category {} products from database", categoryId);
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
@@ -281,7 +263,7 @@ public class ProductServiceImpl implements ProductService {
     @Cacheable(value = "products", key = "'search-' + #keyword + '-' + #pageNumber + '-' + #pageSize + '-' + #sortBy + '-' + #sortOrder")
     public ProductResponse searchProductByKeyword(String keyword, Integer pageNumber, Integer pageSize, String sortBy,
                                                   String sortOrder) {
-        System.out.println("-----> [CACHE MISS] Searching Keyword '" + keyword + "' in MySQL Database! <-----");
+        log.debug("Cache miss: searching keyword '{}' in database", keyword);
 
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()

@@ -1,6 +1,4 @@
-// Wraps User entity into Spring Security's principal format.
-// Implements both UserDetails (for JWT/form login) and OAuth2User (for OAuth2 login)
-// so a single principal type works across all authentication paths.
+// Wraps User entity into Spring Security's UserDetails principal format.
 package com.ecommerce.ecommerce.Security.Services;
 
 import com.ecommerce.ecommerce.Models.User;
@@ -9,16 +7,13 @@ import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Getter
-public class UserDetailsImpl implements UserDetails, OAuth2User {
+public class UserDetailsImpl implements UserDetails {
 
     private final Long id;
     private final String username;
@@ -35,11 +30,6 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
 
     private final Collection<? extends GrantedAuthority> authorities;
 
-    // Raw OAuth2 attributes — null for local (username/password) logins.
-    // Stored so Spring Security's OAuth2 infrastructure can access them if needed.
-    @JsonIgnore
-    private Map<String, Object> oauth2Attributes;
-
     public UserDetailsImpl(Long id, String username, String email, String password, boolean enabled,
                            Collection<? extends GrantedAuthority> authorities,
                            String displayName, String phone, java.time.LocalDate joinedDate) {
@@ -52,12 +42,9 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
         this.displayName = displayName;
         this.phone = phone;
         this.joinedDate = joinedDate;
-        this.oauth2Attributes = Map.of();
     }
 
     // Converts DB User entity into Spring Security principal.
-    // Password may be null for OAuth2-only accounts — Spring Security handles this gracefully
-    // because OAuth2 users never go through the UsernamePasswordAuthenticationFilter.
     public static UserDetailsImpl build(User user) {
         List<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority(role.getRoleName().name()))
@@ -73,20 +60,6 @@ public class UserDetailsImpl implements UserDetails, OAuth2User {
                 user.getName(),
                 user.getPhone(),
                 user.getJoinedDate());
-    }
-
-    // ── OAuth2User ────────────────────────────────────────────────────────────
-
-    // OAuth2User requires getName() — we return the username for consistency.
-    @Override
-    public String getName() {
-        return username;
-    }
-
-    // Returns the raw OAuth2 attribute map (empty map for local logins).
-    @Override
-    public Map<String, Object> getAttributes() {
-        return oauth2Attributes;
     }
 
     // ── UserDetails ───────────────────────────────────────────────────────────

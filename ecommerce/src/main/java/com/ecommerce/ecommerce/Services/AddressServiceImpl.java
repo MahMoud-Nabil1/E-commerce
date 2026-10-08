@@ -7,22 +7,19 @@ import com.ecommerce.ecommerce.Models.User;
 import com.ecommerce.ecommerce.Payload.AddressDTO;
 import com.ecommerce.ecommerce.Repositories.AddressRepository;
 import com.ecommerce.ecommerce.Repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-public class AddressServiceImpl implements AddressService{
-    @Autowired
-    private AddressRepository addressRepository;
+@RequiredArgsConstructor
+public class AddressServiceImpl implements AddressService {
 
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    UserRepository userRepository;
+    private final AddressRepository addressRepository;
+    private final UserRepository userRepository;
+    private final ModelMapper modelMapper;
 
     // Saves address and adds it to user's address list.
     @Override

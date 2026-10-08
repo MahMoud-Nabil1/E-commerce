@@ -14,8 +14,8 @@ import com.ecommerce.ecommerce.Repositories.CartRepository;
 import com.ecommerce.ecommerce.Repositories.ProductRepository;
 import com.ecommerce.ecommerce.util.AuthUtil;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,21 +23,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-public class CartServiceImpl implements CartService{
-    @Autowired
-    private CartRepository cartRepository;
+@RequiredArgsConstructor
+public class CartServiceImpl implements CartService {
 
-    @Autowired
-    private AuthUtil authUtil;
-
-    @Autowired
-    ProductRepository productRepository;
-
-    @Autowired
-    CartItemRepository cartItemRepository;
-
-    @Autowired
-    ModelMapper modelMapper;
+    private final CartRepository cartRepository;
+    private final AuthUtil authUtil;
+    private final ProductRepository productRepository;
+    private final CartItemRepository cartItemRepository;
+    private final ModelMapper modelMapper;
 
     // Adds a product to the logged-in user's cart. Creates cart if needed.
     @Transactional

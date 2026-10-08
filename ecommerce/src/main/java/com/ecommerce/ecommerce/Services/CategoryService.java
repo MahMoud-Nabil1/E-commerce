@@ -1,7 +1,6 @@
 // Contract for category listing, creation, update, and deletion.
 package com.ecommerce.ecommerce.Services;
 
-import com.ecommerce.ecommerce.Models.Category;
 import com.ecommerce.ecommerce.Payload.CategoryDTO;
 import com.ecommerce.ecommerce.Payload.CategoryResponse;
 import org.springframework.web.multipart.MultipartFile;

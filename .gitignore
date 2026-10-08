@@ -41,6 +41,7 @@ yarn-error.log*
 
 # Environment Variables — never commit secrets
 .env
+*.env
 .env.local
 .env.development
 .env.development.local

@@ -1,5 +1,3 @@
-// Configures CORS to allow the frontend (both local dev and production) to call the API.
-// The allowed origin is read from an environment variable so it works on any deployment.
 package com.ecommerce.ecommerce.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -9,34 +7,37 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 public class CorsConfig {
 
-    // Comma-separated list of allowed frontend origins.
-    // Example: http://localhost:5173,https://your-app.onrender.com
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000}")
+    @Value("${app.cors.allowed-origins:http://localhost:5174,http://127.0.0.1:5174,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}")
     private String allowedOrigins;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Parse comma-separated origins from the env var.
-        List<String> origins = List.of(allowedOrigins.split(","));
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .map(origin -> origin.replaceAll("/+$", ""))
+                .distinct()
+                .toList();
+
         config.setAllowedOrigins(origins);
-
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));
-
-        // Required for HttpOnly cookie transport across origins.
+        config.setExposedHeaders(List.of("Authorization", "Set-Cookie", "Content-Disposition"));
         config.setAllowCredentials(true);
-
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }
+

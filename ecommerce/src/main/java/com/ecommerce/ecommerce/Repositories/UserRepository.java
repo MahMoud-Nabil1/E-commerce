@@ -25,11 +25,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Used by security layer to load user during authentication.
     Optional<User> findByUsername(String username);
 
-    // Used by OAuth2 flow to look up a user by their email address.
+    // Used during authentication and password reset to look up a user by email.
     Optional<User> findByEmail(String email);
-
-    // Used by OAuth2 flow to find an existing linked account for a provider.
-    Optional<User> findByProviderAndProviderId(String provider, String providerId);
 
     // Eagerly fetches roles alongside the user — safe to use outside a transaction.
     @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.username = :username")

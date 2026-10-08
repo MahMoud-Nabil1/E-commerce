@@ -7,8 +7,9 @@ import com.ecommerce.ecommerce.Models.Category;
 import com.ecommerce.ecommerce.Payload.CategoryDTO;
 import com.ecommerce.ecommerce.Payload.CategoryResponse;
 import com.ecommerce.ecommerce.Repositories.CategoryRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,17 +26,14 @@ import java.util.List;
 /**
  * Implementation of the CategoryService handling the core category business logic.
  */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private FileService fileService;
+    private final CategoryRepository categoryRepository;
+    private final ModelMapper modelMapper;
+    private final FileService fileService;
 
     @Value("${project.image}")
     private String path;
@@ -45,7 +43,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Cacheable(value = "categories", key = "#pageNumber + '-' + #pageSize + '-' + #sortBy + '-' + #sortOrder")
     public CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        System.out.println("-----> [CACHE MISS] Fetching Categories from MySQL Database! <-----");
+        log.debug("Cache miss: fetching categories from database");
 
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()

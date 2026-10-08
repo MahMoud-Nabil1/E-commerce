@@ -10,8 +10,8 @@ import com.ecommerce.ecommerce.Payload.OrderResponse;
 import com.ecommerce.ecommerce.Repositories.*;
 import com.ecommerce.ecommerce.util.AuthUtil;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,34 +24,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
-    @Autowired
-    CartRepository cartRepository;
-
-    @Autowired
-    AddressRepository addressRepository;
-
-    @Autowired
-    OrderItemRepository orderItemRepository;
-
-    @Autowired
-    OrderRepository orderRepository;
-
-    @Autowired
-    PaymentRepository paymentRepository;
-
-    @Autowired
-    CartService cartService;
-
-    @Autowired
-    ModelMapper modelMapper;
-
-    @Autowired
-    ProductRepository productRepository;
-
-    @Autowired
-    AuthUtil authUtil;
+    private final CartRepository cartRepository;
+    private final AddressRepository addressRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
+    private final CartService cartService;
+    private final ModelMapper modelMapper;
+    private final ProductRepository productRepository;
+    private final AuthUtil authUtil;
 
     // Converts user's cart into a persisted order. DB-heavy.
     @Override

@@ -1,5 +1,4 @@
 // DB entity: application user with roles and addresses.
-// Supports both local (username/password) and OAuth2 (Google, GitHub) sign-in.
 package com.ecommerce.ecommerce.Models;
 
 import jakarta.persistence.*;
@@ -41,17 +40,14 @@ public class User {
     @Column(name = "email")
     private String email;
 
-    // Nullable for OAuth2 users who authenticate via a provider and have no local password.
+    @NotBlank
     @Size(max = 120)
     @Column(name = "password")
     private String password;
 
-    // "local" for username/password accounts; "google" or "github" for OAuth2 accounts.
-    @Column(name = "provider", length = 20, nullable = false)
+    @Column(name = "provider", length = 50)
     private String provider = "local";
 
-    // The unique ID returned by the OAuth2 provider (e.g. Google sub, GitHub id).
-    // Null for local accounts.
     @Column(name = "provider_id")
     private String providerId;
 
@@ -86,20 +82,12 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private java.util.List<Address> addresses = new java.util.ArrayList<>();
 
-    // Constructor for local (username/password) registration.
+    // Constructor for user registration.
     public User(String username, String email, String password) {
         this.username = username;
         this.email = email;
         this.password = password;
         this.provider = "local";
-    }
-
-    // Constructor for OAuth2 user creation.
-    public User(String username, String email, String provider, String providerId) {
-        this.username = username;
-        this.email = email;
-        this.provider = provider;
-        this.providerId = providerId;
     }
         
     @OneToOne(mappedBy = "user", cascade = { CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)

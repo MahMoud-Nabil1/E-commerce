@@ -7,7 +7,7 @@ import com.ecommerce.ecommerce.Payload.CartItemDTO;
 import com.ecommerce.ecommerce.Repositories.CartRepository;
 import com.ecommerce.ecommerce.Services.CartService;
 import com.ecommerce.ecommerce.util.AuthUtil;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,16 +16,12 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class CartController {
 
-    @Autowired
-    private CartRepository cartRepository;
-
-    @Autowired
-    private AuthUtil authUtil;
-
-    @Autowired
-    private CartService cartService;
+    private final CartRepository cartRepository;
+    private final AuthUtil authUtil;
+    private final CartService cartService;
 
     /**
      * What it does: Replaces the entire cart from frontend state (bulk sync). Useful for emptying the cart or syncing offline cart data.
