@@ -3,38 +3,29 @@ package com.ecommerce.ecommerce.Controllers;
 
 import com.ecommerce.ecommerce.config.AppConstants;
 import com.ecommerce.ecommerce.Payload.*;
-import com.ecommerce.ecommerce.Security.Services.UserDetailsImpl;
 import com.ecommerce.ecommerce.Services.OrderService;
 import com.ecommerce.ecommerce.Services.StripeService;
 import com.ecommerce.ecommerce.util.AuthUtil;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class OrderController {
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
+    private final AuthUtil authUtil;
+    private final StripeService stripeService;
 
-    @Autowired
-    private AuthUtil authUtil;
-
-    @Autowired
-    private StripeService stripeService;
-
-    /**
-     * What it does: Places an order from the user's current cart and automatically deducts stock.
-     * What it expects: The 'paymentMethod' in the URL path, and an OrderRequestDTO in the JSON body containing payment and address details.
-     * What it returns: An OrderDTO representing the final processed order with 201 Created.
-     */
     /**
      * What it does: Places an order from the user's current cart and automatically deducts stock if COD.
      * What it expects: An OrderRequestDTO in the JSON body containing payment and address details.
@@ -43,7 +34,7 @@ public class OrderController {
     @PostMapping("/orders/checkout")
     public ResponseEntity<OrderDTO> checkout(@RequestBody OrderRequestDTO orderRequestDTO) {
         String emailId = authUtil.loggedInEmail();
-        System.out.println("orderRequestDTO DATA: " + orderRequestDTO);
+        log.debug("Processing checkout for user: {}, paymentMethod: {}", emailId, orderRequestDTO.getPaymentMethod());
         OrderDTO order = orderService.placeOrder(
                 emailId,
                 orderRequestDTO.getAddressId(),
@@ -60,7 +51,7 @@ public class OrderController {
      */
     @PostMapping("/order/stripe-client-secret")
     public ResponseEntity<String> createStripeClientSecret(@RequestBody StripePaymentDto stripePaymentDto) throws StripeException {
-        System.out.println("StripePaymentDTO Received " + stripePaymentDto);
+        log.debug("Creating Stripe payment intent for amount: {} {}", stripePaymentDto.getAmount(), stripePaymentDto.getCurrency());
         PaymentIntent paymentIntent = stripeService.paymentIntent(stripePaymentDto);
         return new ResponseEntity<>(paymentIntent.getClientSecret(), HttpStatus.CREATED);
     }

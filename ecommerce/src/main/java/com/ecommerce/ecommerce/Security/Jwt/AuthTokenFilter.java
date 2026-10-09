@@ -1,6 +1,7 @@
 // Intercepts every request to extract and validate JWT tokens.
 package com.ecommerce.ecommerce.Security.Jwt;
 
+import com.ecommerce.ecommerce.Security.Services.UserDetailsImpl;
 import com.ecommerce.ecommerce.Security.Services.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -18,7 +20,18 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
+/**
+ * Stateless JWT filter adapted for microservices architecture.
+ *
+ * <p>
+ * Validates incoming tokens and constructs the authenticated SecurityContext
+ * principal directly from JWT claims (username, ID, email, roles).
+ * This eliminates the expensive per-request database query overhead and allows
+ * distributed microservices to validate requests independently.
+ * </p>
+ */
 @Component
 @RequiredArgsConstructor
 public class AuthTokenFilter extends OncePerRequestFilter {
@@ -28,36 +41,60 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
-    // Extracts JWT, validates it, and sets authenticated user in context.
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        try {
-            String jwt = parseJwt(request);
+        String jwt = parseJwt(request);
 
-            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
+        if (jwt != null) {
+            try {
+                if (jwtUtils.validateJwtToken(jwt)) {
+                    String username = jwtUtils.getUserNameFromJwtToken(jwt);
+                    List<String> roles = jwtUtils.getRolesFromJwtToken(jwt);
+                    Long userId = jwtUtils.getUserIdFromJwtToken(jwt);
+                    String email = jwtUtils.getEmailFromJwtToken(jwt);
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    UserDetails userDetails;
+                    // If roles are present in the JWT, construct principal statelessly
+                    if (roles != null && !roles.isEmpty()) {
+                        List<SimpleGrantedAuthority> authorities = roles.stream()
+                                .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                                .map(SimpleGrantedAuthority::new)
+                                .toList();
 
-                // Credentials null because JWT already proved identity.
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
+                        userDetails = new UserDetailsImpl(
+                                userId,
+                                username,
+                                email != null ? email : username,
                                 null,
-                                userDetails.getAuthorities());
+                                true,
+                                authorities,
+                                null,
+                                null,
+                                null
+                        );
+                    } else {
+                        // Fallback for legacy tokens that only contained the username claim
+                        userDetails = userDetailsService.loadUserByUsername(username);
+                    }
 
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities());
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    SecurityContextHolder.clearContext();
+                }
+            } catch (Exception e) {
+                logger.error("Cannot set user authentication: {}", e.getMessage(), e);
                 SecurityContextHolder.clearContext();
             }
-        } catch (Exception e) {
-            // Swallow: request proceeds unauthenticated, entry point handles 401.
-            logger.error("Cannot set user authentication: {}", e.getMessage(), e);
-            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

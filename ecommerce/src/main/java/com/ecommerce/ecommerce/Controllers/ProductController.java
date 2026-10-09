@@ -8,7 +8,7 @@ import com.ecommerce.ecommerce.Services.ProductService;
 import com.ecommerce.ecommerce.Services.FileService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,13 +26,11 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class ProductController {
 
-    @Autowired
-    ProductService productService;
-
-    @Autowired
-    private FileService fileService;
+    private final ProductService productService;
+    private final FileService fileService;
 
     @Value("${project.image}")
     private String path;

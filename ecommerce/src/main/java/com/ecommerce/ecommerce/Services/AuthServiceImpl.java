@@ -24,6 +24,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,25 +39,19 @@ import java.util.stream.Collectors;
  * registration, and user management business logic.
  *
  * <p>
- * This service is responsible for:
+ * Adapted with BookaBeeka security patterns:
  * <ul>
- * <li>Authenticating users via the Spring Security
- * {@link AuthenticationManager}</li>
- * <li>Creating new user accounts with encoded passwords and resolved roles</li>
- * <li>Generating and clearing JWT cookies for stateless session management</li>
- * <li>Extracting the currently authenticated user's profile from the security
- * context</li>
+ * <li>Cryptographically secure OTP generation (SecureRandom)</li>
+ * <li>Timing-attack safe OTP verification (MessageDigest.isEqual)</li>
+ * <li>Dual transport tokens (HttpOnly Cookie + response payload for cross-origin / mobile clients)</li>
  * </ul>
- *
- * <p>
- * <strong>Design note:</strong> This service intentionally does <em>not</em>
- * return {@link org.springframework.http.ResponseEntity} — HTTP-layer concerns
- * are the responsibility of the controller.
  * </p>
  */
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -63,19 +60,6 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtils jwtUtils;
     private final MailService mailService;
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>
-     * Flow:
-     * <ol>
-     * <li>Authenticate credentials via the {@link AuthenticationManager}</li>
-     * <li>Inject the resulting {@link Authentication} into the
-     * {@link SecurityContextHolder}</li>
-     * <li>Generate a signed JWT and wrap it in an HttpOnly cookie</li>
-     * <li>Build and return the user info response alongside the cookie</li>
-     * </ol>
-     */
     @Override
     public AuthenticationResult login(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
@@ -83,31 +67,25 @@ public class AuthServiceImpl implements AuthService {
                         loginRequest.getUsername(),
                         loginRequest.getPassword()));
 
-        // Inject authenticated principal into the SecurityContext for the current
-        // request
+        // Inject authenticated principal into the SecurityContext for the current request
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
+        // 1. Generate HttpOnly cookie for web browser session
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+
+        // 2. Generate raw JWT string for authorization header / mobile / cross-origin clients
+        String rawJwt = jwtUtils.generateToken(userDetails);
 
         List<String> roles = extractRoleNames(userDetails);
         UserInfoResponse response = new UserInfoResponse(
-                userDetails.getId(), userDetails.getUsername(), roles, userDetails.getEmail(), null,
+                userDetails.getId(), userDetails.getUsername(), roles, userDetails.getEmail(), rawJwt,
                 userDetails.getDisplayName(), userDetails.getPhone(), userDetails.getJoinedDate());
 
         return new AuthenticationResult(jwtCookie, response);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>
-     * Validates uniqueness of username and email before persisting the new user.
-     * Passwords are hashed with the configured {@link PasswordEncoder} (BCrypt)
-     * before being stored.
-     * </p>
-     */
     @Override
     public MessageResponse register(RegisterRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
@@ -122,48 +100,61 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername(signUpRequest.getUsername());
         user.setEmail(signUpRequest.getEmail());
 
-        // Never store plaintext passwords.
+        // Never store plaintext passwords
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
 
+        // Validate and resolve requested roles.
+        // Public registration permits only 'USER' and 'SELLER' roles.
+        // Arbitrary roles or attempts to register as 'ADMIN' are explicitly rejected.
         Set<String> requestedRoles = signUpRequest.getRole();
         Set<Role> roles = new HashSet<>();
 
-        // Default to ROLE_USER when no role is specified.
         if (requestedRoles == null || requestedRoles.isEmpty()) {
             roles.add(resolveRole(AppRole.ROLE_USER));
         } else {
-            requestedRoles.forEach(roleName -> {
-                switch (roleName.toLowerCase()) {
-                    case "admin" -> roles.add(resolveRole(AppRole.ROLE_ADMIN));
-                    case "seller" -> roles.add(resolveRole(AppRole.ROLE_SELLER));
-                    default -> roles.add(resolveRole(AppRole.ROLE_USER));
+            for (String rawRole : requestedRoles) {
+                if (rawRole == null || rawRole.trim().isEmpty()) {
+                    continue;
                 }
-            });
+                String normalized = rawRole.trim().toUpperCase();
+                if (normalized.startsWith("ROLE_")) {
+                    normalized = normalized.substring(5);
+                }
+
+                if ("ADMIN".equals(normalized)) {
+                    throw new com.ecommerce.ecommerce.exceptions.APIException(
+                            "Error: Public registration cannot assign ADMIN privileges.");
+                }
+
+                switch (normalized) {
+                    case "USER" -> roles.add(resolveRole(AppRole.ROLE_USER));
+                    case "SELLER" -> roles.add(resolveRole(AppRole.ROLE_SELLER));
+                    default -> throw new com.ecommerce.ecommerce.exceptions.APIException(
+                            "Error: Unsupported role requested: " + rawRole
+                                    + ". Only 'user' and 'seller' roles are allowed for registration.");
+                }
+            }
+
+            if (roles.isEmpty()) {
+                roles.add(resolveRole(AppRole.ROLE_USER));
+            }
         }
 
         user.setRoles(roles);
-
-        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
-        user.setEmailVerificationOtp(otp);
-        user.setEmailVerificationOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
-        user.setEnabled(false); // Require email verification
+        user.setEnabled(true); // Account active immediately upon registration
+        user.setProvider("local");
 
         userRepository.save(user);
 
-        String subject = "Verify your E-Commerce account email";
-        String body = "Thank you for signing up!\n\n"
-                + "Please use the following 6-digit OTP code to verify your account:\n\n"
-                + otp + "\n\n"
-                + "This OTP will expire in 15 minutes.\n\n"
-                + "If you did not request this registration, please ignore this email.";
+        String subject = "Welcome to E-Commerce!";
+        String body = "Hi " + user.getUsername() + ",\n\n"
+                + "Thank you for creating an account with us!\n"
+                + "Your account is active and you can now log in and start shopping.\n";
         mailService.sendMail(user.getEmail(), subject, body);
 
-        return new MessageResponse("User registered successfully! Please check your email for the verification OTP.");
+        return new MessageResponse("User registered successfully!");
     }
 
-    // Extracts user info from the current security context.
-    // Returns null if the authentication is missing or not yet resolved —
-    // the controller handles the null case and returns an appropriate response.
     @Override
     public UserInfoResponse getCurrentUserDetails(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()
@@ -176,17 +167,14 @@ public class AuthServiceImpl implements AuthService {
                 userDetails.getDisplayName(), userDetails.getPhone(), userDetails.getJoinedDate());
     }
 
-    // Returns an empty cookie that clears the JWT on logout.
     @Override
     public ResponseCookie logoutUser() {
         return jwtUtils.getCleanJwtCookie();
     }
 
-    // TODO: Implement seller-specific query with role filtering.
     @Override
     @Transactional(readOnly = true)
     public Object getAllSellers(Pageable pageDetails) {
-        // JOIN FETCH can't return Page directly — manually count + fetch.
         long total = userRepository.countByRoleName(AppRole.ROLE_SELLER);
         List<User> sellers = userRepository.findAllByRoleNameWithRoles(AppRole.ROLE_SELLER, pageDetails);
 
@@ -225,7 +213,7 @@ public class AuthServiceImpl implements AuthService {
             throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Email is already verified.");
         }
 
-        if (user.getEmailVerificationOtp() == null || !user.getEmailVerificationOtp().equals(otp)) {
+        if (user.getEmailVerificationOtp() == null || !safeOtpEquals(user.getEmailVerificationOtp(), otp)) {
             throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Invalid verification OTP.");
         }
 
@@ -249,7 +237,7 @@ public class AuthServiceImpl implements AuthService {
             throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Email is already verified.");
         }
 
-        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        String otp = generateOtpCode();
         user.setEmailVerificationOtp(otp);
         user.setEmailVerificationOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
@@ -267,7 +255,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
 
-        String otp = String.format("%06d", new java.util.Random().nextInt(1000000));
+        String otp = generateOtpCode();
         user.setPasswordResetOtp(otp);
         user.setPasswordResetOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
@@ -287,7 +275,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
 
-        if (user.getPasswordResetOtp() == null || !user.getPasswordResetOtp().equals(otp)) {
+        if (user.getPasswordResetOtp() == null || !safeOtpEquals(user.getPasswordResetOtp(), otp)) {
             throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Invalid reset OTP.");
         }
 
@@ -303,27 +291,30 @@ public class AuthServiceImpl implements AuthService {
 
     // ======================== Private Helpers ========================
 
+    private String generateOtpCode() {
+        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+    }
+
     /**
-     * Resolves a {@link Role} entity from the database by its {@link AppRole} enum
-     * value.
-     *
-     * @param appRole the role enum to look up
-     * @return the corresponding {@link Role} entity
-     * @throws RuntimeException if the role does not exist in the database
+     * Constant-time comparison to prevent timing attacks on OTP verification.
+     * Pattern adapted from BookaBeeka reference.
      */
+    private boolean safeOtpEquals(String expected, String actual) {
+        if (expected == null || actual == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
     private Role resolveRole(AppRole appRole) {
         return roleRepository.findByRoleName(appRole)
                 .orElseThrow(() -> new RuntimeException(
                         "Error: Role is not found — " + appRole.name()));
     }
 
-    /**
-     * Extracts a list of role name strings from the authenticated user's
-     * authorities.
-     *
-     * @param userDetails the authenticated user's details
-     * @return a list of role names (e.g., {@code ["ROLE_USER", "ROLE_ADMIN"]})
-     */
     private List<String> extractRoleNames(UserDetailsImpl userDetails) {
         return userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())

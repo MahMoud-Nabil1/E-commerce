@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class AppConfigration {
+public class AppConfiguration {
     // Used across services to convert between entities and DTOs.
     @Bean
     public ModelMapper modelMapper(){
