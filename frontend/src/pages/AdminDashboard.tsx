@@ -711,110 +711,261 @@ interface ImageUploadModalProps {
 }
 
 export function ImageUploadModal({ product, isAdmin, onClose, onSaved }: ImageUploadModalProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(
-    product.image
-      ? (product.image.startsWith('http') || product.image.startsWith('blob:')
-        ? product.image
-        : `${API_BASE}/api/public/products/image/${product.image}`)
-      : null
-  );
-  const [dragging, setDragging] = useState(false);
+  // Gallery state — initialised from the product's images array, falling back to
+  // the legacy single-image field so older products still show their picture.
+  const initGallery = (): string[] => {
+    if (product.images && product.images.length > 0) return [...product.images];
+    if (product.image && product.image !== 'default.png') return [product.image];
+    return [];
+  };
+
+  const [gallery,   setGallery]   = useState<string[]>(initGallery);
+  const [selected,  setSelected]  = useState<string | null>(gallery[0] ?? null);
+  const [files,     setFiles]     = useState<File[]>([]);
+  const [previews,  setPreviews]  = useState<string[]>([]);  // blob URLs for pending files
+  const [dragging,  setDragging]  = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [deleting,  setDeleting]  = useState<string | null>(null);
+  const [error,     setError]     = useState('');
+  const [success,   setSuccess]   = useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  const MAX_MB = 10;
+  const MAX_MB  = 10;
 
-  const pickFile = (f: File) => {
-    if (!ALLOWED.includes(f.type)) { setError('Only JPEG, PNG, WebP, or GIF images are allowed.'); return; }
-    if (f.size > MAX_MB * 1024 * 1024) { setError(`File must be smaller than ${MAX_MB} MB.`); return; }
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  // Only Cloudinary (http) and blob preview URLs are valid; local filenames are legacy stale data
+  const resolveUrl = (url: string) =>
+    url.startsWith('http') || url.startsWith('blob:') ? url : null;
+
+  const pickFiles = (raw: FileList | null) => {
+    if (!raw) return;
     setError('');
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setSuccess(false);
+    const valid: File[]   = [];
+    const blobs: string[] = [];
+    Array.from(raw).forEach(f => {
+      if (!ALLOWED.includes(f.type))          { setError(`"${f.name}" is not a supported image type.`); return; }
+      if (f.size > MAX_MB * 1024 * 1024)      { setError(`"${f.name}" exceeds ${MAX_MB} MB.`);          return; }
+      valid.push(f);
+      blobs.push(URL.createObjectURL(f));
+    });
+    setFiles(prev  => [...prev,  ...valid]);
+    setPreviews(prev => [...prev, ...blobs]);
+    // Select first newly staged image in the preview strip
+    if (blobs.length > 0) setSelected(blobs[0]);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragging(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) pickFile(dropped);
+  const removePending = (idx: number) => {
+    URL.revokeObjectURL(previews[idx]);
+    setFiles(prev    => prev.filter((_, i) => i !== idx));
+    setPreviews(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      if (selected === prev[idx]) setSelected(next[0] ?? gallery[0] ?? null);
+      return next;
+    });
   };
+
+  // ── upload staged files ───────────────────────────────────────────────────
 
   const handleUpload = async () => {
-    if (!file) { setError('Please select an image first.'); return; }
-    setUploading(true); setError('');
+    if (files.length === 0) { setError('Please select at least one image first.'); return; }
+    setUploading(true); setError(''); setSuccess('');
     try {
-      if (isAdmin) await apiClient.adminUpdateProductImage(product.productId, file);
-      else await apiClient.sellerUpdateProductImage(product.productId, file);
-      setSuccess(true);
-      setTimeout(() => onSaved(), 800);
+      const updated = isAdmin
+        ? await apiClient.adminAddProductImages(product.productId, files)
+        : await apiClient.sellerAddProductImages(product.productId, files);
+
+      const nextGallery = updated.images ?? [];
+      setGallery(nextGallery);
+      setSelected(nextGallery[nextGallery.length - 1] ?? null);
+      // clean up blob URLs
+      previews.forEach(URL.revokeObjectURL);
+      setFiles([]);
+      setPreviews([]);
+      setSuccess(`${files.length} image${files.length > 1 ? 's' : ''} uploaded successfully!`);
+      setTimeout(() => onSaved(), 900);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed. Please try again.');
     } finally { setUploading(false); }
   };
 
+  // ── delete an existing gallery image ─────────────────────────────────────
+
+  const handleDelete = async (url: string) => {
+    if (!confirm('Remove this image from the product?')) return;
+    setDeleting(url); setError(''); setSuccess('');
+    try {
+      const updated = isAdmin
+        ? await apiClient.adminDeleteProductImage(product.productId, url)
+        : await apiClient.sellerDeleteProductImage(product.productId, url);
+
+      const nextGallery = updated.images ?? [];
+      setGallery(nextGallery);
+      setSelected(prev => prev === url ? (nextGallery[0] ?? null) : prev);
+      setSuccess('Image removed.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed. Please try again.');
+    } finally { setDeleting(null); }
+  };
+
+  // ── render ────────────────────────────────────────────────────────────────
+
+  // All thumbnails = saved gallery + staged blob previews
+  // resolveUrl returns null for legacy local filenames; filter those out to avoid broken requests
+  const allThumbs: Array<{ src: string; isPending: boolean; pendingIdx?: number; _raw?: string }> = [
+    ...gallery
+      .map(src => ({ src: resolveUrl(src), isPending: false, _raw: src }))
+      .filter((t): t is { src: string; isPending: boolean; _raw: string } => t.src !== null),
+    ...previews.map((src, i) => ({ src, isPending: true, pendingIdx: i })),
+  ];
+
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 480 }}>
-        <h2 className="modal__title">📷 Product Image</h2>
+      <div className="modal" style={{ maxWidth: 540 }}>
+        <h2 className="modal__title">🖼 Product Gallery</h2>
         <p style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginBottom: 16 }}>
-          Uploading for: <strong>{product.productName}</strong>
+          <strong>{product.productName}</strong>
+          <span style={{ marginLeft: 8, fontWeight: 400 }}>
+            {gallery.length} saved · {files.length} pending
+          </span>
         </p>
-        {error && <div className="alert alert--error">{error}</div>}
-        {success && <div className="alert alert--success">✅ Image uploaded successfully!</div>}
 
-        {/* Drop Zone */}
-        <div
-          className={`img-upload-zone${dragging ? ' img-upload-zone--active' : ''}`}
-          onClick={() => inputRef.current?.click()}
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-        >
-          {preview ? (
-            <div className="img-upload-preview">
-              <img src={preview} alt="Preview" className="img-upload-preview__img" />
-              <div className="img-upload-preview__overlay">
-                <span>Click or drag to replace</span>
-              </div>
-            </div>
+        {error   && <div className="alert alert--error">{error}</div>}
+        {success && <div className="alert alert--success">✅ {success}</div>}
+
+        {/* ── Main Preview ── */}
+        <div className="img-gallery-main">
+          {selected ? (
+            <img src={selected} alt="Selected" className="img-gallery-main__img" />
           ) : (
+            <div className="img-gallery-main__empty">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.35 }}>
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <p>No images yet</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Thumbnail Strip ── */}
+        {allThumbs.length > 0 && (
+          <div className="img-gallery-strip" role="list" aria-label="Image gallery">
+            {allThumbs.map((t, i) => {
+              const isActive = selected === t.src;
+              const isBeingDeleted = !t.isPending && deleting === (t as { _raw?: string })._raw;
+              return (
+                <div
+                  key={i}
+                  className={`img-gallery-thumb${isActive ? ' img-gallery-thumb--active' : ''}${isBeingDeleted ? ' img-gallery-thumb--busy' : ''}`}
+                  role="listitem"
+                >
+                  <img
+                    src={t.src}
+                    alt={`Image ${i + 1}`}
+                    onClick={() => setSelected(t.src)}
+                    className="img-gallery-thumb__img"
+                  />
+                  {/* Remove button */}
+                  <button
+                    className="img-gallery-thumb__remove"
+                    title={t.isPending ? 'Remove from queue' : 'Delete image'}
+                    aria-label={t.isPending ? 'Remove from queue' : 'Delete image'}
+                    disabled={uploading || !!deleting}
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (t.isPending && t.pendingIdx !== undefined) {
+                        removePending(t.pendingIdx);
+                      } else {
+                        handleDelete((t as { _raw?: string })._raw!);
+                      }
+                    }}
+                  >
+                    {isBeingDeleted
+                      ? <span className="upload-spinner" style={{ borderTopColor: 'var(--on-surface)' }} />
+                      : '×'}
+                  </button>
+                  {/* Pending badge */}
+                  {t.isPending && (
+                    <span className="img-gallery-thumb__badge">new</span>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Add-more slot */}
+            <button
+              className="img-gallery-thumb img-gallery-thumb--add"
+              onClick={() => inputRef.current?.click()}
+              title="Add more images"
+              aria-label="Add more images"
+              disabled={uploading}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* ── Drop Zone (shown when no images exist at all) ── */}
+        {allThumbs.length === 0 && (
+          <div
+            className={`img-upload-zone${dragging ? ' img-upload-zone--active' : ''}`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => { e.preventDefault(); setDragging(false); pickFiles(e.dataTransfer.files); }}
+          >
             <div className="img-upload-placeholder">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
-              <p style={{ margin: '10px 0 4px', fontWeight: 600 }}>Drop image here</p>
-              <p style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>or click to browse · JPEG, PNG, WebP, GIF · max {MAX_MB} MB</p>
+              <p style={{ margin: '10px 0 4px', fontWeight: 600 }}>Drop images here</p>
+              <p style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>
+                or click to browse · JPEG, PNG, WebP, GIF · max {MAX_MB} MB each
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Hidden multi-file input */}
         <input
           ref={inputRef}
           type="file"
           accept={ALLOWED.join(',')}
+          multiple
           style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) pickFile(f); }}
+          onChange={e => pickFiles(e.target.files)}
+          // reset value so re-selecting same file fires onChange
+          onClick={e => { (e.target as HTMLInputElement).value = ''; }}
         />
 
-        {file && (
-          <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 8, textAlign: 'center' }}>
-            Selected: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(0)} KB)
+        {files.length > 0 && (
+          <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 10, textAlign: 'center' }}>
+            {files.length} file{files.length > 1 ? 's' : ''} queued —{' '}
+            {(files.reduce((s, f) => s + f.size, 0) / 1024).toFixed(0)} KB total
           </p>
         )}
 
         <div className="modal__footer">
-          <button className="btn btn--outline" onClick={onClose} disabled={uploading}>Cancel</button>
-          <button className="btn btn--primary" onClick={handleUpload} disabled={!file || uploading}>
-            {uploading ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="upload-spinner" />Uploading…
-              </span>
-            ) : '⬆ Upload Image'}
+          <button className="btn btn--outline" onClick={onClose} disabled={uploading || !!deleting}>
+            Close
           </button>
+          {files.length > 0 && (
+            <button className="btn btn--primary" onClick={handleUpload} disabled={uploading}>
+              {uploading
+                ? <><span className="upload-spinner" />Uploading…</>
+                : `⬆ Upload ${files.length} image${files.length > 1 ? 's' : ''}`}
+            </button>
+          )}
+          {files.length === 0 && gallery.length > 0 && (
+            <button className="btn btn--outline" onClick={() => inputRef.current?.click()} disabled={uploading}>
+              + Add images
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -38,6 +38,7 @@ export interface Product {
   productName: string;
   description: string;
   image?: string;
+  images?: string[];
   quantity: number;
   price: number;
   discount: number;

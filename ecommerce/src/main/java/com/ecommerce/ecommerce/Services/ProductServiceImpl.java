@@ -339,6 +339,53 @@ public class ProductServiceImpl implements ProductService {
 
         String fileName = fileService.uploadImage(path, image);
         productFromDb.setImage(fileName);
+        // Also add to the images list if not already present
+        if (!productFromDb.getImages().contains(fileName)) {
+            productFromDb.getImages().add(fileName);
+        }
+
+        Product updatedProduct = productRepository.save(productFromDb);
+        return toDTO(updatedProduct);
+    }
+
+    // Appends one or more new images to the product's gallery.
+    // Sets the first uploaded image as the primary if no primary is set yet.
+    @Override
+    @CacheEvict(value = "products", allEntries = true)
+    public ProductDTO addProductImages(Long productId, MultipartFile[] images) throws IOException {
+        Product productFromDb = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+
+        for (MultipartFile image : images) {
+            if (image != null && !image.isEmpty()) {
+                String fileName = fileService.uploadImage(path, image);
+                productFromDb.getImages().add(fileName);
+                // Promote to primary image if none set yet
+                if (productFromDb.getImage() == null || productFromDb.getImage().equals("default.png")) {
+                    productFromDb.setImage(fileName);
+                }
+            }
+        }
+
+        Product updatedProduct = productRepository.save(productFromDb);
+        return toDTO(updatedProduct);
+    }
+
+    // Removes a specific image URL from the gallery.
+    // Reassigns the primary image to the next available, or clears it.
+    @Override
+    @CacheEvict(value = "products", allEntries = true)
+    public ProductDTO deleteProductImage(Long productId, String imageUrl) {
+        Product productFromDb = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+
+        productFromDb.getImages().remove(imageUrl);
+
+        if (imageUrl.equals(productFromDb.getImage())) {
+            productFromDb.setImage(
+                productFromDb.getImages().isEmpty() ? null : productFromDb.getImages().get(0)
+            );
+        }
 
         Product updatedProduct = productRepository.save(productFromDb);
         return toDTO(updatedProduct);

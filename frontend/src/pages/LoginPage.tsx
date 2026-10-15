@@ -120,41 +120,33 @@ export default function LoginPage() {
       {/* ── Left hero panel ── */}
       <div className="auth-panel auth-panel--hero">
         <div className="auth-hero__content">
-          <span className="auth-hero__badge">Secure Access</span>
+          <span className="auth-hero__badge">
+            {view === 'login' ? 'Welcome Back' : 'Password Recovery'}
+          </span>
           <h1 className="auth-hero__title">
             {view === 'login'
-              ? 'The Precision Standard for Enterprise Procurement.'
-              : 'Password Recovery'}
+              ? 'Good to see you again.'
+              : 'Let\'s get you back in.'}
           </h1>
-          <p className="auth-hero__sub">
+          <p className="auth-hero__desc">
             {view === 'login'
-              ? 'Access your dashboard to manage inventory, track logistics, and scale your commerce operations.'
+              ? 'Sign in to pick up where you left off — your cart, orders, and deals are all waiting for you.'
               : 'We\'ll send a one-time code to your email so you can securely reset your password.'}
           </p>
-          <div className="auth-hero__features">
-            <div className="auth-feature">
-              <div className="auth-feature__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" aria-hidden="true">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              </div>
-              <div>
-                <p className="auth-feature__title">256-bit SSL Encryption</p>
-                <p className="auth-feature__desc">All data encrypted in transit</p>
-              </div>
-            </div>
-            <div className="auth-feature">
-              <div className="auth-feature__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" aria-hidden="true">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
-              </div>
-              <div>
-                <p className="auth-feature__title">Real-time Analytics</p>
-                <p className="auth-feature__desc">Zero-latency data synchronization</p>
-              </div>
-            </div>
-          </div>
+          <ul className="auth-features">
+            <li className="auth-feature">
+              <span className="auth-feature__icon" aria-hidden="true">✓</span>
+              <span>Instant access to your orders & wishlist</span>
+            </li>
+            <li className="auth-feature">
+              <span className="auth-feature__icon" aria-hidden="true">✓</span>
+              <span>Exclusive member deals and early access</span>
+            </li>
+            <li className="auth-feature">
+              <span className="auth-feature__icon" aria-hidden="true">✓</span>
+              <span>Secure checkout with saved addresses</span>
+            </li>
+          </ul>
         </div>
       </div>
 
@@ -171,24 +163,16 @@ export default function LoginPage() {
               </div>
 
               <form className="auth-form" onSubmit={handleLoginSubmit} noValidate>
-                {error && (
-                  <div className="auth-error" role="alert">
-                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {error}
-                  </div>
-                )}
 
                 <div className="auth-field">
                   <label htmlFor="login-username" className="auth-label">Username</label>
                   <input
                     id="login-username"
                     type="text"
-                    className="auth-input"
+                    className={`auth-input${error ? ' auth-input--error' : ''}`}
                     placeholder="your_username"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => { setUsername(e.target.value); setError(null); }}
                     required
                     autoComplete="username"
                     autoFocus
@@ -210,10 +194,10 @@ export default function LoginPage() {
                     <input
                       id="login-password"
                       type={showPass ? 'text' : 'password'}
-                      className="auth-input auth-input--icon"
+                      className={`auth-input auth-input--icon${error ? ' auth-input--error' : ''}`}
                       placeholder="••••••••"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => { setPassword(e.target.value); setError(null); }}
                       required
                       autoComplete="current-password"
                     />
@@ -242,6 +226,15 @@ export default function LoginPage() {
                 <button type="submit" className="auth-submit" disabled={loading} id="login-submit-btn">
                   {loading ? <span className="auth-spinner" aria-label="Signing in…" /> : 'Sign In'}
                 </button>
+
+                {error && (
+                  <p className="auth-error" role="alert">
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Incorrect username or password. Please try again.
+                  </p>
+                )}
               </form>
 
               <p className="auth-switch">

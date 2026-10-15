@@ -85,6 +85,30 @@ public class ProductController {
     }
 
     /**
+     * What it does: Uploads multiple images for an admin's product. Admin access only.
+     * What it expects: 'productId' in the path, 'images' array of MultipartFiles in the form-data request.
+     * What it returns: The updated ProductDTO with all images, with 200 OK.
+     */
+    @PostMapping("/admin/products/{productId}/images")
+    public ResponseEntity<ProductDTO> addProductImagesAdmin(@PathVariable Long productId,
+            @RequestParam("images") MultipartFile[] images) throws IOException {
+        ProductDTO updatedProduct = productService.addProductImages(productId, images);
+        return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Deletes a specific image from an admin's product. Admin access only.
+     * What it expects: 'productId' in the path, 'imageUrl' as a request parameter.
+     * What it returns: The updated ProductDTO with remaining images, with 200 OK.
+     */
+    @DeleteMapping("/admin/products/{productId}/images")
+    public ResponseEntity<ProductDTO> deleteProductImageAdmin(@PathVariable Long productId,
+            @RequestParam("imageUrl") String imageUrl) {
+        ProductDTO updatedProduct = productService.deleteProductImage(productId, imageUrl);
+        return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
+    }
+
+    /**
      * What it does: Lists ALL products in the entire system for administrative views. Admin access only.
      * What it expects: Optional pagination parameters ('pageNumber', 'pageSize', 'sortBy', 'sortOrder').
      * What it returns: A ProductResponse object with pagination metadata and a list of ProductDTOs, with 200 OK.
@@ -180,6 +204,30 @@ public class ProductController {
         return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
     }
 
+    /**
+     * What it does: Uploads multiple images for a seller's product. Seller access only.
+     * What it expects: 'productId' in the path, 'images' array of MultipartFiles in the form-data request.
+     * What it returns: The updated ProductDTO with all images, with 200 OK.
+     */
+    @PostMapping("/seller/products/{productId}/images")
+    public ResponseEntity<ProductDTO> addProductImagesSeller(@PathVariable Long productId,
+            @RequestParam("images") MultipartFile[] images) throws IOException {
+        ProductDTO updatedProduct = productService.addProductImages(productId, images);
+        return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
+    }
+
+    /**
+     * What it does: Deletes a specific image from a seller's product. Seller access only.
+     * What it expects: 'productId' in the path, 'imageUrl' as a request parameter.
+     * What it returns: The updated ProductDTO with remaining images, with 200 OK.
+     */
+    @DeleteMapping("/seller/products/{productId}/images")
+    public ResponseEntity<ProductDTO> deleteProductImageSeller(@PathVariable Long productId,
+            @RequestParam("imageUrl") String imageUrl) {
+        ProductDTO updatedProduct = productService.deleteProductImage(productId, imageUrl);
+        return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
+    }
+
     // ======================== PUBLIC ENDPOINTS ========================
 
     /**
@@ -244,26 +292,16 @@ public class ProductController {
     }
 
     /**
-     * What it does: Retrieves a product's image by filename. Public access.
-     * What it expects: 'imageName' as a path variable.
-     * What it returns: The image bytes directly with the correct content-type, or a default gray placeholder if not found.
+     * What it does: This endpoint is deprecated when using Cloudinary.
+     * Images are accessed directly via Cloudinary URLs stored in the Product entity.
+     * This endpoint now returns HTTP 410 (Gone) to indicate it's no longer available.
+     * 
+     * Frontend should use the image URL from the product response directly.
      */
     @GetMapping("/public/products/image/{imageName}")
-    public void getProductImage(@PathVariable String imageName, HttpServletResponse response) throws IOException {
-        try {
-            InputStream resource = fileService.getResource(path, imageName);
-            String mimeType = Files.probeContentType(Paths.get(path + File.separator + imageName));
-            if (mimeType == null) {
-                mimeType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-            }
-            response.setContentType(mimeType);
-            StreamUtils.copy(resource, response.getOutputStream());
-        } catch (FileNotFoundException e) {
-            response.setContentType(MediaType.IMAGE_PNG_VALUE);
-            byte[] placeholder = java.util.Base64.getDecoder().decode(
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-            );
-            response.getOutputStream().write(placeholder);
-        }
+    public ResponseEntity<String> getProductImage(@PathVariable String imageName) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body("This endpoint is deprecated. Images are now served via Cloudinary CDN. " +
+                      "Please use the image URL from the product response directly.");
     }
 }

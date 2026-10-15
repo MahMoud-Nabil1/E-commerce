@@ -48,6 +48,11 @@ public class Product {
 
     private String image;
 
+    @ElementCollection
+    @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "image_url")
+    private java.util.List<String> images = new java.util.ArrayList<>();
+
     @NotBlank
     @Size(min = 6, message = "Product description must contain atleast 6 characters")
     private String description;

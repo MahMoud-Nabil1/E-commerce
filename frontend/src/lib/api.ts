@@ -38,6 +38,27 @@ export type {
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
+/**
+ * Returns a displayable image URL for a product.
+ *
+ * Priority:
+ *  1. First entry of `images[]`  — canonical multi-image list
+ *  2. Legacy `image` string       — single-image fallback
+ *  3. null                        — caller renders the placeholder SVG
+ *
+ * If the stored value is already a full URL (Cloudinary CDN) it is used as-is.
+ * Otherwise it is wrapped in the legacy proxy path.
+ */
+export function resolveProductImage(product: { image?: string; images?: string[] }): string | null {
+  const raw =
+    (product.images && product.images.length > 0 ? product.images[0] : null) ??
+    product.image ??
+    null;
+  if (!raw || raw === 'default.png') return null;
+  // Only use full Cloudinary URLs; local filenames are from old data and the endpoint no longer exists
+  return raw.startsWith('http') ? raw : null;
+}
+
 class ApiClient {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -244,6 +265,22 @@ class ApiClient {
     return res.data;
   }
 
+  /** POST /api/admin/products/{productId}/images — uploads multiple product images (admin) */
+  async adminAddProductImages(productId: number, files: File[]): Promise<Product> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('images', file));
+    const res = await axiosClient.post<Product>(`/api/admin/products/${productId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  }
+
+  /** DELETE /api/admin/products/{productId}/images — deletes a specific product image (admin) */
+  async adminDeleteProductImage(productId: number, imageUrl: string): Promise<Product> {
+    const res = await axiosClient.delete<Product>(`/api/admin/products/${productId}/images?imageUrl=${encodeURIComponent(imageUrl)}`);
+    return res.data;
+  }
+
   // ── Admin: Orders ─────────────────────────────────────────────────────────
 
   async adminGetOrders(page = 0, size = 20): Promise<OrderResponse> {
@@ -297,6 +334,22 @@ class ApiClient {
     const res = await axiosClient.put<Product>(`/api/seller/products/${productId}/image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return res.data;
+  }
+
+  /** POST /api/seller/products/{productId}/images — uploads multiple product images (seller) */
+  async sellerAddProductImages(productId: number, files: File[]): Promise<Product> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('images', file));
+    const res = await axiosClient.post<Product>(`/api/seller/products/${productId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  }
+
+  /** DELETE /api/seller/products/{productId}/images — deletes a specific product image (seller) */
+  async sellerDeleteProductImage(productId: number, imageUrl: string): Promise<Product> {
+    const res = await axiosClient.delete<Product>(`/api/seller/products/${productId}/images?imageUrl=${encodeURIComponent(imageUrl)}`);
     return res.data;
   }
 

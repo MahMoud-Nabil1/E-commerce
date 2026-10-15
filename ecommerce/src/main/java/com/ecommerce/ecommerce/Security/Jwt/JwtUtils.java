@@ -101,7 +101,7 @@ public class JwtUtils {
     public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
         String jwt = generateToken(userPrincipal);
         return ResponseCookie.from(jwtCookie, jwt)
-                .path("/api")
+                .path("/")
                 .maxAge(24 * 60 * 60)
                 .httpOnly(true)
                 .secure(cookieSecure)
@@ -112,7 +112,7 @@ public class JwtUtils {
     // Returns an empty cookie that instructs the browser to delete the JWT.
     public ResponseCookie getCleanJwtCookie() {
         return ResponseCookie.from(jwtCookie, "")
-                .path("/api")
+                .path("/")
                 .maxAge(0)
                 .httpOnly(true)
                 .secure(cookieSecure)

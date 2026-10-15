@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, API_BASE } from '../lib/api';
+import { apiClient, resolveProductImage } from '../lib/api';
 import type { Product } from '../types';
 import './ProductPage.css';
 
@@ -57,6 +57,20 @@ export default function ProductPage() {
   const savings = product ? product.price - product.specialPrice : 0;
   const inStock = product ? product.quantity > 0 : false;
 
+  // Build the ordered gallery: images[] takes priority, falls back to single image field.
+  const gallery: string[] = product
+    ? (product.images && product.images.length > 0
+        ? product.images
+        : product.image && product.image !== 'default.png' ? [product.image] : [])
+    : [];
+
+  const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  // Keep selectedImg in sync when the product first loads (or changes).
+  useEffect(() => { setSelectedImg(gallery[0] ?? null); }, [product?.productId]); // eslint-disable-line
+
+  const resolveUrl = (url: string) =>
+    url.startsWith('http') ? url : `${resolveProductImage({ image: url }) ?? url}`;
+
   return (
     <div className="product-detail-page">
       {/* Breadcrumb */}
@@ -104,10 +118,11 @@ export default function ProductPage() {
           <article className="product-detail">
             {/* Image panel */}
             <div className="product-detail__image-panel">
+              {/* Main viewer */}
               <div className="product-detail__image-frame">
-                {product.image ? (
+                {selectedImg ? (
                   <img
-                    src={`${API_BASE}/api/public/products/image/${product.image}`}
+                    src={resolveUrl(selectedImg)}
                     alt={product.productName}
                     className="product-detail__img"
                   />
@@ -122,6 +137,25 @@ export default function ProductPage() {
                   </div>
                 )}
               </div>
+
+              {/* Thumbnail strip — only shown when there are 2+ images */}
+              {gallery.length > 1 && (
+                <div className="product-detail__thumbs" role="list" aria-label="Product images">
+                  {gallery.map((url, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      role="listitem"
+                      className={`product-detail__thumb${selectedImg === url ? ' product-detail__thumb--active' : ''}`}
+                      onClick={() => setSelectedImg(url)}
+                      aria-label={`View image ${i + 1}`}
+                      aria-pressed={selectedImg === url}
+                    >
+                      <img src={resolveUrl(url)} alt={`${product.productName} ${i + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Info panel */}

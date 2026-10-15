@@ -23,6 +23,7 @@ public class ProductDTO {
     private String productName;
 
     private String image;
+    private java.util.List<String> images;
 
     @NotBlank(message = "Product description must not be blank")
     @Size(min = 6, message = "Product description must contain at least 6 characters")

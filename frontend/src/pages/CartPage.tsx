@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, API_BASE, type Cart, type CartProduct } from '../lib/api';
+import { apiClient, resolveProductImage, type Cart, type CartProduct } from '../lib/api';
 import './CartPage.css';
 
 export default function CartPage() {
@@ -142,9 +142,9 @@ export default function CartPage() {
                   <li key={product.productId} className="cart-item">
                     {/* Image */}
                     <div className="cart-item__img-wrap">
-                      {product.image ? (
+                      {(() => { const src = resolveProductImage(product); return src ? (
                         <img
-                          src={`${API_BASE}/api/public/products/image/${product.image}`}
+                          src={src}
                           alt={product.productName}
                           className="cart-item__img"
                         />
@@ -156,7 +156,7 @@ export default function CartPage() {
                             <path d="M4 34l10-10 8 8 6-6 16 14" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
                           </svg>
                         </div>
-                      )}
+                      ); })()}
                     </div>
 
                     {/* Info */}

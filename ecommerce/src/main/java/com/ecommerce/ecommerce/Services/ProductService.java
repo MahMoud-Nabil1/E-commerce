@@ -23,6 +23,10 @@ public interface ProductService {
 
     ProductDTO updateProductImage(Long productId, MultipartFile image) throws IOException;
 
+    ProductDTO addProductImages(Long productId, MultipartFile[] images) throws IOException;
+
+    ProductDTO deleteProductImage(Long productId, String imageUrl);
+
     ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 
     ProductResponse getAllProductsForSeller(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);

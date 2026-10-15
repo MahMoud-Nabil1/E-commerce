@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom';
 import type { Product } from '../types';
 import '../pages/HomePage.css';
 import './ProductCard.css';
-
-import { API_BASE } from '../lib/api';
+import { resolveProductImage } from '../lib/api';
 
 export default function ProductCard({ product }: { product: Product }) {
   const inStock = product.quantity > 0;
+  const imgSrc  = resolveProductImage(product);
 
   return (
     <Link
@@ -22,9 +22,9 @@ export default function ProductCard({ product }: { product: Product }) {
               -{product.discount}%
             </span>
           )}
-          {product.image ? (
+          {imgSrc ? (
             <img
-              src={`${API_BASE}/api/public/products/image/${product.image}`}
+              src={imgSrc}
               alt={product.productName}
               className="product-card__img"
               loading="lazy"
