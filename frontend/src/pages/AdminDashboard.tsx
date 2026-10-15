@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, API_BASE } from '../lib/api';
+import { apiClient } from '../lib/api';
 import type { Product, Category, Order } from '../types';
 import './Dashboard.css';
 
