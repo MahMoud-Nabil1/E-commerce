@@ -56,6 +56,8 @@ public class MyGlobalExceptionHandler {
         String message = e.getMessage();
         if (e instanceof org.springframework.security.authentication.DisabledException) {
             message = "Your email is not verified. Please verify your email first.";
+        } else if (e instanceof org.springframework.security.authentication.LockedException) {
+            message = "Your account has been suspended or banned. Please contact support.";
         } else if (e instanceof org.springframework.security.authentication.BadCredentialsException) {
             message = "Invalid username or password.";
         }

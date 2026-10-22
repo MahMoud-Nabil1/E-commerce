@@ -27,10 +27,14 @@ public class UserDetailsImpl implements UserDetails {
     private final String password;
 
     private final boolean enabled;
+    // Suspended/banned state is reflected via isAccountNonLocked() so Spring Security
+    // throws LockedException at login, which the global handler maps to a clear message.
+    private final boolean accountNonLocked;
 
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserDetailsImpl(Long id, String username, String email, String password, boolean enabled,
+                           boolean accountNonLocked,
                            Collection<? extends GrantedAuthority> authorities,
                            String displayName, String phone, java.time.LocalDate joinedDate) {
         this.id = id;
@@ -38,6 +42,7 @@ public class UserDetailsImpl implements UserDetails {
         this.email = email;
         this.password = password;
         this.enabled = enabled;
+        this.accountNonLocked = accountNonLocked;
         this.authorities = authorities;
         this.displayName = displayName;
         this.phone = phone;
@@ -50,12 +55,16 @@ public class UserDetailsImpl implements UserDetails {
                 .map(role -> new SimpleGrantedAuthority(role.getRoleName().name()))
                 .collect(Collectors.toList());
 
+        // Account is locked if banned OR suspended
+        boolean nonLocked = !user.isBanned() && !user.isSuspended();
+
         return new UserDetailsImpl(
                 user.getUserId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
                 user.isEnabled(),
+                nonLocked,
                 authorities,
                 user.getName(),
                 user.getPhone(),
@@ -76,7 +85,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return accountNonLocked;
     }
 
     @Override

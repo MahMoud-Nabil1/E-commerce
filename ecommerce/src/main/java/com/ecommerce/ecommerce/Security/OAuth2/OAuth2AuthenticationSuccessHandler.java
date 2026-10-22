@@ -44,6 +44,13 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                                         Authentication authentication) throws IOException {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
+        // Purge legacy cookies on older paths so stale sessions don't linger
+        for (ResponseCookie cleanCookie : jwtUtils.getCleanJwtCookies()) {
+            if ("/api".equals(cleanCookie.getPath()) || "/api/auth".equals(cleanCookie.getPath())) {
+                response.addHeader("Set-Cookie", cleanCookie.toString());
+            }
+        }
+
         // Reuse the same JWT cookie generation as the regular login flow.
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
         response.addHeader("Set-Cookie", jwtCookie.toString());

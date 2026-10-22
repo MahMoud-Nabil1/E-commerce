@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../lib/api';
 import type { Category } from '../types';
-import './CategoriesPage.css';
 
 // ── Category visual config ──────────────────────────────────────────────────
 // Maps keywords in a category name to a gradient + SVG icon.
@@ -176,7 +175,7 @@ function getCategoryVisual(name: string): CategoryVisual {
 
   // ── Default fallback ──
   return {
-    gradient: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+    gradient: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)',
     icon: (
       <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
         <rect x="8" y="8" width="20" height="20" rx="4" stroke="white" strokeWidth="3" />
@@ -215,62 +214,69 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="categories-page">
+    <div>
       {/* Hero */}
-      <div className="categories-hero">
+      <div className="bg-gradient-to-br from-primary to-primary-container py-12 md:py-8">
         <div className="container">
-          <p className="section-overline">Browse</p>
-          <h1 className="headline-lg">Shop by Category</h1>
+          <p className="text-on-primary-container text-xs font-bold tracking-[0.14em] uppercase mb-2">Browse</p>
+          <h1 className="text-3xl font-extrabold text-on-primary tracking-tight md:text-2xl">Shop by Category</h1>
           {!loading && !error && categories.length > 0 && (
-            <p className="categories-hero__sub">{categories.length} categories available</p>
+            <p className="text-on-primary-container text-sm mt-1">{categories.length} categories available</p>
           )}
         </div>
       </div>
 
-      <div className="container categories-content">
+      <div className="container py-10 pb-16">
         {/* Loading skeletons */}
         {loading && (
-          <div className="categories-grid" aria-busy="true" aria-label="Loading categories">
+          <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3.5 sm:gap-6" aria-busy="true" aria-label="Loading categories">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="category-card-skeleton" aria-hidden="true" />
+              <div key={i} className="aspect-[3/4] rounded-2xl sm:rounded-3xl bg-surface-container animate-pulse" aria-hidden="true" />
             ))}
           </div>
         )}
 
         {/* Error */}
         {error && !loading && (
-          <div className="categories-error" role="alert">
-            <p className="status-error">{error}</p>
+          <div className="flex flex-col items-center gap-2 py-16 text-on-surface-variant text-center" role="alert">
+            <p className="text-error font-semibold">{error}</p>
           </div>
         )}
 
         {/* Empty */}
         {!loading && !error && categories.length === 0 && (
-          <div className="empty-state" role="status">
+          <div className="flex flex-col items-center gap-2 py-16 text-on-surface-variant text-center" role="status">
             No categories available yet.
           </div>
         )}
 
         {/* Grid */}
         {!loading && !error && categories.length > 0 && (
-          <div className="categories-grid" role="list">
+          <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3.5 sm:gap-6" role="list">
             {categories.map((cat) => {
               const visual = getCategoryVisual(cat.categoryName);
               return (
                 <button
                   key={cat.categoryId}
                   type="button"
-                  className="category-card"
+                  className="group relative flex flex-col items-center justify-end rounded-3xl overflow-hidden cursor-pointer aspect-[3/4] shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-[0_20px_48px_rgba(0,0,0,0.22)] focus-visible:outline-[3px] focus-visible:outline-secondary focus-visible:outline-offset-[3px] active:scale-[0.97] transition-all duration-250 border-none p-0"
                   role="listitem"
                   onClick={() => handleCategoryClick(cat.categoryName)}
                   aria-label={`Browse ${cat.categoryName}`}
-                  style={{ '--cat-gradient': visual.gradient } as React.CSSProperties}
+                  style={{ background: visual.gradient } as React.CSSProperties}
                 >
-                  <div className="category-card__icon-wrap">
-                    {visual.icon}
+                  {/* Bottom gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/55 pointer-events-none rounded-[inherit]" />
+
+                  {/* Icon wrapper */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[65%] w-20 h-20 flex items-center justify-center bg-white/[0.12] border border-white/[0.2] rounded-[22px] backdrop-blur-sm transition-all group-hover:scale-[1.1] group-hover:bg-white/[0.2]">
+                    <div className="w-10 h-10 flex items-center justify-center text-white">
+                      {visual.icon}
+                    </div>
                   </div>
-                  <span className="category-card__name">{cat.categoryName}</span>
-                  <span className="category-card__cta">
+
+                  <span className="relative z-[1] text-white text-base font-extrabold tracking-tight leading-snug px-4 mb-1.5 text-shadow-sm">{cat.categoryName}</span>
+                  <span className="relative z-[1] inline-flex items-center gap-1 text-white/75 text-xs font-semibold tracking-wider uppercase mb-5 group-hover:text-white group-hover:gap-2 transition-all">
                     Shop now
                     <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" width="14" height="14">
                       <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

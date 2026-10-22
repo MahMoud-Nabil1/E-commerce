@@ -173,6 +173,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public List<ResponseCookie> logoutUserCookies() {
+        return jwtUtils.getCleanJwtCookies();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Object getAllSellers(Pageable pageDetails) {
         long total = userRepository.countByRoleName(AppRole.ROLE_SELLER);
@@ -186,6 +191,10 @@ public class AuthServiceImpl implements AuthService {
             dto.put("roles", user.getRoles().stream()
                     .map(role -> role.getRoleName().name())
                     .collect(Collectors.toList()));
+            // Status fields needed by the admin UI for ban/suspend actions
+            dto.put("enabled", user.isEnabled());
+            dto.put("banned", user.isBanned());
+            dto.put("suspended", user.isSuspended());
             return dto;
         }).collect(Collectors.toList());
 
@@ -251,7 +260,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void forgotPassword(String email) {
+    public String forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.APIException("Error: User not found with email: " + email));
 
@@ -261,12 +270,15 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         String subject = "Reset your E-Commerce password";
-        String body = "You requested to reset your password.\n\n"
+        String body = "Hello " + user.getUsername() + ", you requested to reset your password.\n\n"
                 + "Please use the following 6-digit OTP code to reset your password:\n\n"
                 + otp + "\n\n"
                 + "This OTP will expire in 15 minutes.\n\n"
-                + "If you did not request a password reset, please ignore this email.";
+                + "If you did not request a password reset, please ignore this email.\n\n"
+                + "- The E-Commerce Team";
         mailService.sendMail(user.getEmail(), subject, body);
+
+        return user.getUsername();
     }
 
     @Override
@@ -319,5 +331,48 @@ public class AuthServiceImpl implements AuthService {
         return userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
+    }
+
+    // ======================== Seller Account Management ========================
+
+    @Override
+    @Transactional
+    public void banSeller(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.ResourceNotFoundException("User", "id", userId));
+        if (user.getRoles().stream().noneMatch(r -> r.getRoleName() == AppRole.ROLE_SELLER)) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Target user is not a seller.");
+        }
+        user.setBanned(true);
+        user.setSuspended(false); // ban supersedes suspension
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void suspendSeller(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.ResourceNotFoundException("User", "id", userId));
+        if (user.getRoles().stream().noneMatch(r -> r.getRoleName() == AppRole.ROLE_SELLER)) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Target user is not a seller.");
+        }
+        if (user.isBanned()) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: User is already permanently banned.");
+        }
+        user.setSuspended(true);
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void activateSeller(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.ecommerce.ecommerce.exceptions.ResourceNotFoundException("User", "id", userId));
+        if (user.getRoles().stream().noneMatch(r -> r.getRoleName() == AppRole.ROLE_SELLER)) {
+            throw new com.ecommerce.ecommerce.exceptions.APIException("Error: Target user is not a seller.");
+        }
+        user.setBanned(false);
+        user.setSuspended(false);
+        userRepository.save(user);
     }
 }

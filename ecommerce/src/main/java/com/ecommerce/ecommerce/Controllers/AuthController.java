@@ -8,11 +8,13 @@ import com.ecommerce.ecommerce.Payload.RegisterRequest;
 import com.ecommerce.ecommerce.Payload.UserInfoResponse;
 import com.ecommerce.ecommerce.Payload.VerifyEmailRequest;
 import com.ecommerce.ecommerce.Payload.ForgotPasswordRequest;
+import com.ecommerce.ecommerce.Payload.ForgotPasswordResponse;
 import com.ecommerce.ecommerce.Payload.ResetPasswordRequest;
 import com.ecommerce.ecommerce.Services.AuthService;
 import com.ecommerce.ecommerce.config.AppConstants;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,14 +39,25 @@ public class AuthController {
      * What it does: Authenticates a user and sets a JWT cookie in the response header.
      * What it expects: A LoginRequest containing username and password in the JSON body.
      * What it returns: A UserInfoResponse with user details, and a Set-Cookie header with the JWT token.
+     *
+     * <p>The response always sets two Set-Cookie headers: one that clears any existing
+     * JWT cookie (maxAge=0) and one that sets the new token. This prevents the browser
+     * from retaining a previous user's session when switching accounts without logging out.</p>
      */
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         AuthenticationResult result = authService.login(loginRequest);
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, result.getJwtCookie().toString())
-                .body(result.getResponse());
+        // Explicitly clear legacy /api cookies before setting the new one.
+        // This handles account-switching and ensures stale cookies from older paths are evicted.
+        for (ResponseCookie clearCookie : authService.logoutUserCookies()) {
+            if ("/api".equals(clearCookie.getPath()) || "/api/auth".equals(clearCookie.getPath())) {
+                response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+            }
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, result.getJwtCookie().toString());
+
+        return ResponseEntity.ok(result.getResponse());
     }
 
     /**
@@ -87,15 +101,15 @@ public class AuthController {
      * What it returns: A MessageResponse confirming logout, and clears the JWT cookie in the response header.
      */
     @PostMapping("/signout")
-    public ResponseEntity<?> signoutUser(HttpServletRequest request) {
+    public ResponseEntity<?> signoutUser(HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
         }
-        ResponseCookie cookie = authService.logoutUser();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(new MessageResponse("You've been signed out!"));
+        for (ResponseCookie cookie : authService.logoutUserCookies()) {
+            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        }
+        return ResponseEntity.ok(new MessageResponse("You've been signed out!"));
     }
 
 
@@ -147,8 +161,9 @@ public class AuthController {
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok(new MessageResponse("Password reset OTP has been sent to your email."));
+        String username = authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(new ForgotPasswordResponse(
+                "Password reset OTP has been sent to your email.", username));
     }
 
     /**
@@ -160,5 +175,43 @@ public class AuthController {
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
         return ResponseEntity.ok(new MessageResponse("Password reset successfully! You can now log in with your new password."));
+    }
+
+    // ── Admin: Seller account management ─────────────────────────────────────
+
+    /**
+     * What it does: Permanently bans a seller account. The seller cannot log in until an admin unbans them.
+     * What it expects: The seller's user ID as a path variable.
+     * What it returns: A MessageResponse confirming the ban.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/sellers/{userId}/ban")
+    public ResponseEntity<?> banSeller(@PathVariable Long userId) {
+        authService.banSeller(userId);
+        return ResponseEntity.ok(new MessageResponse("Seller has been permanently banned."));
+    }
+
+    /**
+     * What it does: Temporarily suspends a seller account. The seller cannot log in until reinstated.
+     * What it expects: The seller's user ID as a path variable.
+     * What it returns: A MessageResponse confirming the suspension.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/sellers/{userId}/suspend")
+    public ResponseEntity<?> suspendSeller(@PathVariable Long userId) {
+        authService.suspendSeller(userId);
+        return ResponseEntity.ok(new MessageResponse("Seller has been suspended."));
+    }
+
+    /**
+     * What it does: Reactivates a banned or suspended seller account.
+     * What it expects: The seller's user ID as a path variable.
+     * What it returns: A MessageResponse confirming reactivation.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/sellers/{userId}/activate")
+    public ResponseEntity<?> activateSeller(@PathVariable Long userId) {
+        authService.activateSeller(userId);
+        return ResponseEntity.ok(new MessageResponse("Seller account has been reactivated."));
     }
 }

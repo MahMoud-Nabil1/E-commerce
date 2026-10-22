@@ -4,19 +4,27 @@ export default function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>();
 
   return (
-    <div className="container" style={{ padding: '3rem 1rem', textAlign: 'center', maxWidth: '500px' }}>
-      <div style={{ fontSize: '4rem', color: '#4caf50', marginBottom: '1rem' }}>✓</div>
-      <h1 className="headline-lg" style={{ marginBottom: '1rem' }}>Order Placed Successfully!</h1>
-      <p style={{ color: '#555', marginBottom: '2rem' }}>
-        Thank you for your purchase. Your order #{orderId} has been received and is being processed.
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <Link to="/profile/orders" className="cart-btn-primary" style={{ padding: '0.75rem', textDecoration: 'none', borderRadius: '4px', display: 'inline-block' }}>
-          View My Orders
-        </Link>
-        <Link to="/" style={{ color: '#005c97', textDecoration: 'none', marginTop: '0.5rem' }}>
-          Continue Shopping
-        </Link>
+    <div className="container min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-[500px] w-full text-center py-12">
+        <div className="text-[4rem] text-green-500 mb-4">✓</div>
+        <h1 className="text-3xl font-extrabold text-on-surface tracking-tight mb-4">Order Placed Successfully!</h1>
+        <p className="text-on-surface-variant mb-8">
+          Thank you for your purchase. Your order #{orderId} has been received and is being processed.
+        </p>
+        <div className="flex flex-col gap-4">
+          <Link
+            to="/profile/orders"
+            className="w-full py-3 bg-secondary text-on-secondary font-bold text-base rounded-md no-underline inline-block hover:bg-secondary-container transition-colors active:scale-[0.98]"
+          >
+            View My Orders
+          </Link>
+          <Link
+            to="/"
+            className="text-secondary no-underline mt-2 font-semibold hover:underline"
+          >
+            Continue Shopping
+          </Link>
+        </div>
       </div>
     </div>
   );

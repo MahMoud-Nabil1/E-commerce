@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
-import './AuthPage.css';
 
 // ── View states ──────────────────────────────────────────────────────────────
 type View = 'login' | 'forgot-email' | 'forgot-otp' | 'forgot-done';
@@ -29,6 +28,7 @@ export default function LoginPage() {
   const [fpLoading,   setFpLoading]   = useState(false);
   const [fpError,     setFpError]     = useState<string | null>(null);
   const [fpSuccess,   setFpSuccess]   = useState<string | null>(null);
+  const [fpUsername,  setFpUsername]  = useState<string | null>(null);
   const [resendCool,  setResendCool]  = useState(false);
 
   const from = (location.state as { from?: string })?.from;
@@ -54,7 +54,8 @@ export default function LoginPage() {
     setFpError(null);
     setFpLoading(true);
     try {
-      await apiClient.forgotPassword(fpEmail);
+      const data = await apiClient.forgotPassword(fpEmail);
+      setFpUsername(data.username ?? null);
       setFpSuccess('A 6-digit OTP has been sent to your email.');
       setView('forgot-otp');
     } catch (err) {
@@ -111,65 +112,91 @@ export default function LoginPage() {
     setFpConfirm('');
     setFpError(null);
     setFpSuccess(null);
+    setFpUsername(null);
     setError(null);
   }
 
+  // ── Shared class strings ───────────────────────────────────────────────────
+  const inputCls = (hasErr?: boolean) =>
+    `w-full px-[14px] py-[11px] border-[1.5px] rounded-[10px] bg-surface text-on-surface font-sans text-[0.9rem] outline-none transition-all placeholder:text-outline ${
+      hasErr
+        ? 'border-red-600 focus:border-red-600 focus:ring-[3px] focus:ring-red-600/10'
+        : 'border-outline-variant focus:border-secondary focus:ring-[3px] focus:ring-secondary/10'
+    }`;
+
+  const submitCls =
+    'w-full py-[13px] border-none rounded-[10px] bg-secondary text-on-secondary font-sans text-[0.95rem] font-bold cursor-pointer flex items-center justify-center gap-2 mt-1 tracking-[0.01em] hover:bg-secondary-container hover:shadow-[0_4px_16px_rgba(38,77,217,0.25)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all';
+
+  const errorCls =
+    'flex items-center gap-1.5 text-[0.82rem] font-medium text-red-600 mb-0.5';
+
+  const infoCls =
+    'flex items-center gap-2 px-[14px] py-3 rounded-[10px] bg-secondary/7 border border-secondary/18 text-secondary text-[0.875rem] font-medium mb-1';
+
+  const backBtnCls =
+    'inline-flex items-center gap-1.5 bg-transparent border-none p-0 font-sans text-[0.83rem] font-semibold text-on-surface-variant cursor-pointer mb-7 hover:text-on-surface transition-colors';
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="auth-page">
+    <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[calc(100vh-var(--navbar-height,64px))]">
       {/* ── Left hero panel ── */}
-      <div className="auth-panel auth-panel--hero">
-        <div className="auth-hero__content">
-          <span className="auth-hero__badge">
+      <div className="relative hidden lg:flex items-center overflow-hidden px-14 py-16"
+        style={{ background: 'linear-gradient(160deg, var(--color-primary) 0%, var(--color-primary-container) 60%, #1a3a6e 100%)' }}>
+        {/* decorative circles */}
+        <div className="absolute w-[420px] h-[420px] rounded-full bg-white/6 pointer-events-none -bottom-[120px] -right-[100px]" />
+        <div className="absolute w-[220px] h-[220px] rounded-full bg-white/6 pointer-events-none -top-[60px] -left-[60px]" />
+
+        <div className="relative z-[1] max-w-[440px]">
+          <span className="inline-flex items-center gap-1.5 px-[14px] py-[5px] rounded-full bg-white/10 border border-white/18 text-white/85 text-[0.72rem] font-bold tracking-[0.1em] uppercase mb-7">
             {view === 'login' ? 'Welcome Back' : 'Password Recovery'}
           </span>
-          <h1 className="auth-hero__title">
+          <h1 className="text-[2.4rem] font-extrabold text-white leading-[1.18] tracking-[-0.025em] mb-[18px]">
             {view === 'login'
               ? 'Good to see you again.'
-              : 'Let\'s get you back in.'}
+              : "Let's get you back in."}
           </h1>
-          <p className="auth-hero__desc">
+          <p className="text-white/60 text-[0.975rem] leading-[1.7] mb-11">
             {view === 'login'
               ? 'Sign in to pick up where you left off — your cart, orders, and deals are all waiting for you.'
-              : 'We\'ll send a one-time code to your email so you can securely reset your password.'}
+              : "We'll send a one-time code to your email so you can securely reset your password."}
           </p>
-          <ul className="auth-features">
-            <li className="auth-feature">
-              <span className="auth-feature__icon" aria-hidden="true">✓</span>
-              <span>Instant access to your orders & wishlist</span>
+          <ul className="list-none flex flex-col gap-[18px] p-0 m-0">
+            <li className="flex items-center gap-3.5">
+              <span className="w-9 h-9 rounded-[10px] bg-white/10 border border-white/14 flex items-center justify-center text-white/90 text-[0.85rem] shrink-0" aria-hidden="true">✓</span>
+              <span className="text-[0.875rem] text-white/75 leading-[1.5]">Instant access to your orders &amp; wishlist</span>
             </li>
-            <li className="auth-feature">
-              <span className="auth-feature__icon" aria-hidden="true">✓</span>
-              <span>Exclusive member deals and early access</span>
+            <li className="flex items-center gap-3.5">
+              <span className="w-9 h-9 rounded-[10px] bg-white/10 border border-white/14 flex items-center justify-center text-white/90 text-[0.85rem] shrink-0" aria-hidden="true">✓</span>
+              <span className="text-[0.875rem] text-white/75 leading-[1.5]">Exclusive member deals and early access</span>
             </li>
-            <li className="auth-feature">
-              <span className="auth-feature__icon" aria-hidden="true">✓</span>
-              <span>Secure checkout with saved addresses</span>
+            <li className="flex items-center gap-3.5">
+              <span className="w-9 h-9 rounded-[10px] bg-white/10 border border-white/14 flex items-center justify-center text-white/90 text-[0.85rem] shrink-0" aria-hidden="true">✓</span>
+              <span className="text-[0.875rem] text-white/75 leading-[1.5]">Secure checkout with saved addresses</span>
             </li>
           </ul>
         </div>
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="auth-panel auth-panel--form">
-        <div className="auth-form-wrap">
+      <div className="bg-surface flex items-center justify-center px-4 sm:px-10 py-8 md:py-[52px]">
+        <div className="w-full max-w-[420px]">
 
           {/* ════ VIEW: LOGIN ════ */}
           {view === 'login' && (
             <>
-              <div className="auth-form-header">
-                <h2 className="auth-form-title">Welcome back</h2>
-                <p className="auth-form-sub">Sign in to your account to continue</p>
+              <div className="mb-7">
+                <h2 className="text-[1.75rem] font-extrabold text-on-surface tracking-[-0.025em] mb-1.5 leading-[1.2]">Welcome back</h2>
+                <p className="text-on-surface-variant text-[0.875rem] leading-[1.5]">Sign in to your account to continue</p>
               </div>
 
-              <form className="auth-form" onSubmit={handleLoginSubmit} noValidate>
+              <form className="flex flex-col gap-[18px] mb-5" onSubmit={handleLoginSubmit} noValidate>
 
-                <div className="auth-field">
-                  <label htmlFor="login-username" className="auth-label">Username</label>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="login-username" className="text-[0.82rem] font-semibold text-on-surface tracking-[0.01em]">Username</label>
                   <input
                     id="login-username"
                     type="text"
-                    className={`auth-input${error ? ' auth-input--error' : ''}`}
+                    className={inputCls(!!error)}
                     placeholder="your_username"
                     value={username}
                     onChange={(e) => { setUsername(e.target.value); setError(null); }}
@@ -179,22 +206,22 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <div className="auth-field">
-                  <div className="auth-label-row">
-                    <label htmlFor="login-password" className="auth-label">Password</label>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="login-password" className="text-[0.82rem] font-semibold text-on-surface tracking-[0.01em]">Password</label>
                     <button
                       type="button"
-                      className="auth-forgot-link"
+                      className="bg-transparent border-none p-0 font-sans text-[0.8rem] font-semibold text-secondary cursor-pointer hover:opacity-75 transition-opacity"
                       onClick={() => { setError(null); setView('forgot-email'); }}
                     >
                       Forgot password?
                     </button>
                   </div>
-                  <div className="auth-input-wrap">
+                  <div className="relative flex items-center">
                     <input
                       id="login-password"
                       type={showPass ? 'text' : 'password'}
-                      className={`auth-input auth-input--icon${error ? ' auth-input--error' : ''}`}
+                      className={inputCls(!!error) + ' pr-[42px]'}
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => { setPassword(e.target.value); setError(null); }}
@@ -203,7 +230,7 @@ export default function LoginPage() {
                     />
                     <button
                       type="button"
-                      className="auth-eye-btn"
+                      className="absolute right-3 bg-transparent border-none p-0.5 text-on-surface-variant cursor-pointer flex items-center justify-center rounded-md hover:text-on-surface transition-colors"
                       aria-label={showPass ? 'Hide password' : 'Show password'}
                       onClick={() => setShowPass(v => !v)}
                     >
@@ -223,12 +250,12 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <button type="submit" className="auth-submit" disabled={loading} id="login-submit-btn">
-                  {loading ? <span className="auth-spinner" aria-label="Signing in…" /> : 'Sign In'}
+                <button type="submit" className={submitCls} disabled={loading} id="login-submit-btn">
+                  {loading ? <span className="w-[18px] h-[18px] rounded-full border-[2.5px] border-white/35 border-t-white animate-spin" aria-label="Signing in…" /> : 'Sign In'}
                 </button>
 
                 {error && (
-                  <p className="auth-error" role="alert">
+                  <p className={errorCls} role="alert">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
@@ -237,9 +264,9 @@ export default function LoginPage() {
                 )}
               </form>
 
-              <p className="auth-switch">
+              <p className="text-center text-[0.875rem] text-on-surface-variant mt-5">
                 Don't have an account?{' '}
-                <Link to="/register" className="auth-switch__link">Create one</Link>
+                <Link to="/register" className="text-secondary font-bold no-underline hover:text-secondary-container transition-colors">Create one</Link>
               </p>
             </>
           )}
@@ -247,27 +274,27 @@ export default function LoginPage() {
           {/* ════ VIEW: FORGOT — enter email ════ */}
           {view === 'forgot-email' && (
             <>
-              <button type="button" className="auth-back-btn" onClick={backToLogin}>
+              <button type="button" className={backBtnCls} onClick={backToLogin}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16" aria-hidden="true">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
                 Back to Sign In
               </button>
 
-              <div className="auth-form-header">
-                <div className="auth-step-icon auth-step-icon--blue">
+              <div className="mb-7">
+                <div className="w-[60px] h-[60px] rounded-[16px] bg-secondary/10 text-secondary flex items-center justify-center mb-[18px]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="26" height="26" aria-hidden="true">
                     <rect x="2" y="4" width="20" height="16" rx="2" />
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                   </svg>
                 </div>
-                <h2 className="auth-form-title">Reset your password</h2>
-                <p className="auth-form-sub">Enter your email and we'll send a 6-digit code.</p>
+                <h2 className="text-[1.75rem] font-extrabold text-on-surface tracking-[-0.025em] mb-1.5 leading-[1.2]">Reset your password</h2>
+                <p className="text-on-surface-variant text-[0.875rem] leading-[1.5]">Enter your email and we'll send a 6-digit code.</p>
               </div>
 
-              <form className="auth-form" onSubmit={handleForgotEmail} noValidate>
+              <form className="flex flex-col gap-[18px] mb-5" onSubmit={handleForgotEmail} noValidate>
                 {fpError && (
-                  <div className="auth-error" role="alert">
+                  <div className={errorCls} role="alert">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
@@ -275,12 +302,12 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <div className="auth-field">
-                  <label htmlFor="fp-email" className="auth-label">Email address</label>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="fp-email" className="text-[0.82rem] font-semibold text-on-surface tracking-[0.01em]">Email address</label>
                   <input
                     id="fp-email"
                     type="email"
-                    className="auth-input"
+                    className={inputCls()}
                     placeholder="you@example.com"
                     value={fpEmail}
                     onChange={(e) => setFpEmail(e.target.value)}
@@ -290,8 +317,8 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <button type="submit" className="auth-submit" disabled={fpLoading} id="fp-send-otp-btn">
-                  {fpLoading ? <span className="auth-spinner" aria-label="Sending…" /> : 'Send Reset Code'}
+                <button type="submit" className={submitCls} disabled={fpLoading} id="fp-send-otp-btn">
+                  {fpLoading ? <span className="w-[18px] h-[18px] rounded-full border-[2.5px] border-white/35 border-t-white animate-spin" aria-label="Sending…" /> : 'Send Reset Code'}
                 </button>
               </form>
             </>
@@ -300,29 +327,34 @@ export default function LoginPage() {
           {/* ════ VIEW: FORGOT — enter OTP + new password ════ */}
           {view === 'forgot-otp' && (
             <>
-              <button type="button" className="auth-back-btn" onClick={() => { setView('forgot-email'); setFpError(null); setFpSuccess(null); }}>
+              <button type="button" className={backBtnCls} onClick={() => { setView('forgot-email'); setFpError(null); setFpSuccess(null); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16" aria-hidden="true">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
                 Change email
               </button>
 
-              <div className="auth-form-header">
-                <div className="auth-step-icon auth-step-icon--purple">
+              <div className="mb-7">
+                <div className="w-[60px] h-[60px] rounded-[16px] bg-purple-500/10 text-purple-700 flex items-center justify-center mb-[18px]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="26" height="26" aria-hidden="true">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </div>
-                <h2 className="auth-form-title">Enter your code</h2>
-                <p className="auth-form-sub">
+                <h2 className="text-[1.75rem] font-extrabold text-on-surface tracking-[-0.025em] mb-1.5 leading-[1.2]">Enter your code</h2>
+                <p className="text-on-surface-variant text-[0.875rem] leading-[1.5]">
                   We sent a 6-digit code to <strong>{fpEmail}</strong>.<br />
                   It expires in 15 minutes.
                 </p>
+                {fpUsername && (
+                  <p className="mt-2 text-[0.82rem] text-on-surface-variant">
+                    Account: <span className="font-semibold text-on-surface">{fpUsername}</span>
+                  </p>
+                )}
               </div>
 
               {fpSuccess && (
-                <div className="auth-info" role="status">
+                <div className={infoCls} role="status">
                   <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
@@ -330,9 +362,9 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <form className="auth-form" onSubmit={handleResetPassword} noValidate>
+              <form className="flex flex-col gap-[18px] mb-5" onSubmit={handleResetPassword} noValidate>
                 {fpError && (
-                  <div className="auth-error" role="alert">
+                  <div className={errorCls} role="alert">
                     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
@@ -340,15 +372,15 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <div className="auth-field">
-                  <label htmlFor="fp-otp" className="auth-label">6-digit OTP code</label>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="fp-otp" className="text-[0.82rem] font-semibold text-on-surface tracking-[0.01em]">6-digit OTP code</label>
                   <input
                     id="fp-otp"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]{6}"
                     maxLength={6}
-                    className="auth-input auth-input--otp"
+                    className={inputCls() + ' text-center text-[1.35rem] tracking-[0.35em] font-bold font-mono py-[14px] px-5'}
                     placeholder="• • • • • •"
                     value={fpOtp}
                     onChange={(e) => setFpOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -358,20 +390,20 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <div className="auth-field">
-                  <label htmlFor="fp-new-pass" className="auth-label">New password</label>
-                  <div className="auth-input-wrap">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="fp-new-pass" className="text-[0.82rem] font-semibold text-on-surface tracking-[0.01em]">New password</label>
+                  <div className="relative flex items-center">
                     <input
                       id="fp-new-pass"
                       type={fpShowPass ? 'text' : 'password'}
-                      className="auth-input auth-input--icon"
+                      className={inputCls() + ' pr-[42px]'}
                       placeholder="At least 8 characters"
                       value={fpNewPass}
                       onChange={(e) => setFpNewPass(e.target.value)}
                       required
                       autoComplete="new-password"
                     />
-                    <button type="button" className="auth-eye-btn" aria-label={fpShowPass ? 'Hide' : 'Show'} onClick={() => setFpShowPass(v => !v)}>
+                    <button type="button" className="absolute right-3 bg-transparent border-none p-0.5 text-on-surface-variant cursor-pointer flex items-center justify-center rounded-md hover:text-on-surface transition-colors" aria-label={fpShowPass ? 'Hide' : 'Show'} onClick={() => setFpShowPass(v => !v)}>
                       {fpShowPass ? (
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
                           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
@@ -388,12 +420,12 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="auth-field">
-                  <label htmlFor="fp-confirm-pass" className="auth-label">Confirm new password</label>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="fp-confirm-pass" className="text-[0.82rem] font-semibold text-on-surface tracking-[0.01em]">Confirm new password</label>
                   <input
                     id="fp-confirm-pass"
                     type={fpShowPass ? 'text' : 'password'}
-                    className="auth-input"
+                    className={inputCls()}
                     placeholder="Repeat your new password"
                     value={fpConfirm}
                     onChange={(e) => setFpConfirm(e.target.value)}
@@ -402,14 +434,19 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <button type="submit" className="auth-submit" disabled={fpLoading || fpOtp.length < 6} id="fp-reset-btn">
-                  {fpLoading ? <span className="auth-spinner" aria-label="Resetting…" /> : 'Reset Password'}
+                <button type="submit" className={submitCls} disabled={fpLoading || fpOtp.length < 6} id="fp-reset-btn">
+                  {fpLoading ? <span className="w-[18px] h-[18px] rounded-full border-[2.5px] border-white/35 border-t-white animate-spin" aria-label="Resetting…" /> : 'Reset Password'}
                 </button>
               </form>
 
-              <p className="auth-switch">
+              <p className="text-center text-[0.875rem] text-on-surface-variant mt-5">
                 Didn't receive it?{' '}
-                <button type="button" className={`auth-switch__link auth-resend-btn${resendCool ? ' auth-resend-btn--cool' : ''}`} onClick={handleResend} disabled={resendCool}>
+                <button
+                  type="button"
+                  className={`bg-transparent border-none p-0 font-sans font-bold text-secondary cursor-pointer hover:text-secondary-container transition-colors ${resendCool ? 'opacity-50 cursor-default' : ''}`}
+                  onClick={handleResend}
+                  disabled={resendCool}
+                >
                   {resendCool ? 'Resent! (wait 30s)' : 'Resend code'}
                 </button>
               </p>
@@ -418,17 +455,17 @@ export default function LoginPage() {
 
           {/* ════ VIEW: FORGOT — success ════ */}
           {view === 'forgot-done' && (
-            <div className="auth-success" role="status">
-              <div className="auth-success__icon">
+            <div className="text-center py-12" role="status">
+              <div className="w-[68px] h-[68px] rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-[22px]">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="32" height="32">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h2 className="auth-form-title">Password reset!</h2>
-              <p className="auth-form-sub" style={{ marginBottom: '28px' }}>
+              <h2 className="text-[1.75rem] font-extrabold text-on-surface tracking-[-0.025em] mb-1.5 leading-[1.2]">Password reset!</h2>
+              <p className="text-on-surface-variant text-[0.875rem] leading-[1.5] mb-7">
                 Your password has been updated. You can now sign in with your new credentials.
               </p>
-              <button type="button" className="auth-submit" onClick={backToLogin} id="fp-back-login-btn">
+              <button type="button" className={submitCls} onClick={backToLogin} id="fp-back-login-btn">
                 Back to Sign In
               </button>
             </div>

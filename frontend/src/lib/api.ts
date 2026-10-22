@@ -7,36 +7,21 @@ import type {
   Product,
   ProductResponse,
   Cart,
-  CartProduct,
   Category,
   CategoryResponse,
   Address,
   Order,
   OrderResponse,
+  Review,
+  ReviewPage,
+  ReviewSummary,
+  ReviewPayload,
 } from '../types';
-
-export type {
-  User,
-  UserProfile,
-  UserProfileUpdate,
-  LoginResponse,
-  Product,
-  ProductResponse,
-  Cart,
-  CartProduct,
-  Category,
-  CategoryResponse,
-  Address,
-  Order,
-  OrderResponse,
-};
 
 // Auth uses HttpOnly cookies set by the backend — no localStorage token needed.
 // In dev: all requests go through Vite's /api proxy → http://localhost:8080/api
 // In production: VITE_API_BASE_URL points directly to the backend Render URL
 // Powered by axiosClient with request & response interceptors for secure JWT handling.
-
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 /**
  * Returns a displayable image URL for a product.
@@ -65,9 +50,8 @@ class ApiClient {
   /** POST /api/auth/login — sets HttpOnly JWT cookie, returns UserInfoResponse */
   async login(username: string, password: string): Promise<LoginResponse> {
     const res = await axiosClient.post<LoginResponse>('/api/auth/login', { username, password });
-    if (res.data.jwtToken) {
-      localStorage.setItem('jwtToken', res.data.jwtToken);
-    }
+    // Do NOT store the JWT in localStorage — the HttpOnly cookie is the auth transport.
+    // Storing it in localStorage would create a second auth path that persists past logout.
     return res.data;
   }
 
@@ -87,9 +71,8 @@ class ApiClient {
     return res.data;
   }
 
-  /** POST /api/auth/signout — clears the JWT cookie and local token */
+  /** POST /api/auth/signout — clears the JWT cookie server-side */
   async signout(): Promise<{ message: string }> {
-    localStorage.removeItem('jwtToken');
     const res = await axiosClient.post<{ message: string }>('/api/auth/signout');
     return res.data;
   }
@@ -107,8 +90,8 @@ class ApiClient {
   }
 
   /** POST /api/auth/forgot-password — requests a password reset OTP */
-  async forgotPassword(email: string): Promise<{ message: string }> {
-    const res = await axiosClient.post<{ message: string }>('/api/auth/forgot-password', { email });
+  async forgotPassword(email: string): Promise<{ message: string; username: string }> {
+    const res = await axiosClient.post<{ message: string; username: string }>('/api/auth/forgot-password', { email });
     return res.data;
   }
 
@@ -305,6 +288,21 @@ class ApiClient {
     return res.data;
   }
 
+  /** PUT /api/admin/sellers/{userId}/ban — permanently ban a seller */
+  async adminBanSeller(userId: number): Promise<void> {
+    await axiosClient.put(`/api/admin/sellers/${userId}/ban`);
+  }
+
+  /** PUT /api/admin/sellers/{userId}/suspend — temporarily suspend a seller */
+  async adminSuspendSeller(userId: number): Promise<void> {
+    await axiosClient.put(`/api/admin/sellers/${userId}/suspend`);
+  }
+
+  /** PUT /api/admin/sellers/{userId}/activate — lift a ban or suspension */
+  async adminActivateSeller(userId: number): Promise<void> {
+    await axiosClient.put(`/api/admin/sellers/${userId}/activate`);
+  }
+
   // ── Seller: Products ──────────────────────────────────────────────────────
 
   async sellerGetProducts(page = 0, size = 20): Promise<ProductResponse> {
@@ -395,6 +393,45 @@ class ApiClient {
   async searchProducts(keyword: string, params?: Record<string, string | number>): Promise<ProductResponse> {
     const res = await axiosClient.get<ProductResponse>(`/api/public/products/keyword/${keyword}`, { params });
     return res.data;
+  }
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+
+  /** GET /api/public/products/{productId}/reviews — paginated list of reviews */
+  async getProductReviews(productId: number, page = 0, size = 8): Promise<ReviewPage> {
+    const res = await axiosClient.get<ReviewPage>(
+      `/api/public/products/${productId}/reviews?pageNumber=${page}&pageSize=${size}`,
+    );
+    return res.data;
+  }
+
+  /** GET /api/public/products/{productId}/reviews/summary — star distribution */
+  async getProductReviewSummary(productId: number): Promise<ReviewSummary> {
+    const res = await axiosClient.get<ReviewSummary>(`/api/public/products/${productId}/reviews/summary`);
+    return res.data;
+  }
+
+  /** GET /api/reviews/my-reviews — reviews written by the authenticated user */
+  async getMyReviews(page = 0, size = 100): Promise<ReviewPage> {
+    const res = await axiosClient.get<ReviewPage>(`/api/reviews/my-reviews?pageNumber=${page}&pageSize=${size}`);
+    return res.data;
+  }
+
+  /** POST /api/products/{productId}/reviews — submit a new review */
+  async addReview(productId: number, payload: ReviewPayload): Promise<Review> {
+    const res = await axiosClient.post<Review>(`/api/products/${productId}/reviews`, payload);
+    return res.data;
+  }
+
+  /** PUT /api/reviews/{reviewId} — update an existing review */
+  async updateReview(reviewId: number, payload: ReviewPayload): Promise<Review> {
+    const res = await axiosClient.put<Review>(`/api/reviews/${reviewId}`, payload);
+    return res.data;
+  }
+
+  /** DELETE /api/reviews/{reviewId} — delete a review */
+  async deleteReview(reviewId: number): Promise<void> {
+    await axiosClient.delete(`/api/reviews/${reviewId}`);
   }
 }
 

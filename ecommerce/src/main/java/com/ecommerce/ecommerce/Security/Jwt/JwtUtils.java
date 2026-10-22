@@ -121,6 +121,39 @@ public class JwtUtils {
     }
 
     /**
+     * Returns a list of clean cookies covering all known path and security permutations.
+     * Ensures browsers cleanly purge existing cookies regardless of whether they were set
+     * with Path="/" or legacy Path="/api", with or without Secure flag, and with or without
+     * SameSite=None / Lax.
+     */
+    public List<ResponseCookie> getCleanJwtCookies() {
+        List<ResponseCookie> cookies = new java.util.ArrayList<>();
+        String[] paths = new String[] { "/", "/api", "/api/auth" };
+
+        for (String p : paths) {
+            // Configured flags
+            cookies.add(ResponseCookie.from(jwtCookie, "")
+                    .path(p)
+                    .maxAge(0)
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .sameSite(cookieSameSite)
+                    .build());
+
+            // Non-secure / Lax variant (covers local dev over HTTP)
+            cookies.add(ResponseCookie.from(jwtCookie, "")
+                    .path(p)
+                    .maxAge(0)
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .build());
+        }
+
+        return cookies;
+    }
+
+    /**
      * Generates a stateless JWT containing full principal identity:
      * subject (username), userId, email, and roles.
      */

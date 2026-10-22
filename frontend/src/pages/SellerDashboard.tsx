@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import type { Product, Category, Order } from '../types';
 import { ProductModal, ImageUploadModal } from './AdminDashboard';
-import './Dashboard.css';
 
 type Tab = 'overview' | 'products' | 'orders';
 
@@ -12,11 +11,34 @@ const ORDER_STATUSES = ['Accepted', 'Processing', 'Shipped', 'Delivered', 'Cance
 
 function statusBadge(status: string) {
   const map: Record<string, string> = {
-    Accepted: 'badge--blue', Processing: 'badge--orange',
-    Shipped: 'badge--purple', Delivered: 'badge--green', Cancelled: 'badge--red',
+    Accepted:   'bg-blue-100 text-blue-700 border-blue-200',
+    Processing: 'bg-orange-100 text-orange-700 border-orange-200',
+    Shipped:    'bg-purple-100 text-purple-700 border-purple-200',
+    Delivered:  'bg-green-100 text-green-700 border-green-200',
+    Cancelled:  'bg-red-100 text-red-700 border-red-200',
   };
-  return map[status] ?? 'badge--gray';
+  return map[status] ?? 'bg-surface-container text-on-surface border-outline-variant';
 }
+
+/* ── Shared Tailwind helpers ── */
+const sidebarLinkCls = (active: boolean) =>
+  `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[14px] font-${active ? '600' : '500'} cursor-pointer border-none w-full text-left no-underline transition-colors ${
+    active
+      ? 'bg-surface-container text-on-surface border border-outline-variant'
+      : 'bg-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+  }`;
+
+const btnCls = (variant: 'primary' | 'outline' | 'danger', sm?: boolean) => {
+  const base = `inline-flex items-center gap-1.5 ${sm ? 'px-[10px] py-[5px] text-[12px]' : 'px-4 py-2 text-[13px]'} rounded-lg font-semibold cursor-pointer border no-underline whitespace-nowrap transition-all disabled:opacity-50 disabled:cursor-not-allowed`;
+  if (variant === 'primary') return `${base} bg-surface-container text-on-surface border-outline-variant hover:bg-surface-high`;
+  if (variant === 'danger')  return `${base} bg-error-container text-on-error-container border-error-container hover:bg-[#ffdad6]`;
+  return `${base} bg-transparent text-on-surface border-outline-variant hover:bg-surface-container`;
+};
+
+const alertCls = (type: 'error' | 'success') =>
+  `flex items-center gap-2 px-[14px] py-[10px] rounded-lg text-[13px] mb-4 ${
+    type === 'error' ? 'bg-error-container text-on-error-container' : 'bg-green-100 text-green-800'
+  }`;
 
 export default function SellerDashboard() {
   const { user, logout } = useAuth();
@@ -27,54 +49,57 @@ export default function SellerDashboard() {
   const initials = user?.username?.slice(0, 2).toUpperCase() ?? 'SE';
 
   return (
-    <div className="dashboard">
-      <aside className="dashboard__sidebar">
-        <div className="sidebar__brand">
-          <p className="sidebar__brand-label">Seller Panel</p>
-          <p className="sidebar__brand-title">ShopFlow</p>
+    <div className="flex min-h-screen bg-surface-low items-stretch">
+      {/* ── Sidebar ── */}
+      <aside className="hidden md:flex w-[240px] shrink-0 bg-surface-low flex-col py-6 sticky top-0 h-screen overflow-y-auto border-r border-outline-variant">
+        <div className="px-5 pb-6 border-b border-outline-variant mb-3">
+          <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-on-surface-variant mb-1">Seller Panel</p>
+          <p className="text-[18px] font-bold text-on-surface">ShopFlow</p>
         </div>
-        <nav className="sidebar__nav">
+        <nav className="flex-1 flex flex-col gap-0.5 px-3">
           {([
-            ['overview', 'Overview', overviewIcon],
+            ['overview', 'Overview',    overviewIcon],
             ['products', 'My Products', productIcon],
             ['orders',   'My Orders',   orderIcon],
           ] as [Tab, string, React.ReactNode][]).map(([key, label, icon]) => (
-            <button key={key} className={`sidebar__link${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
+            <button key={key} className={sidebarLinkCls(tab === key)} onClick={() => setTab(key)}>
               {icon}{label}
             </button>
           ))}
-          <div className="sidebar__divider" />
-          <button className="sidebar__link" onClick={handleLogout}>{logoutIcon}Sign Out</button>
+          <div className="h-px bg-outline-variant my-2 mx-0" />
+          <button className={sidebarLinkCls(false)} onClick={handleLogout}>{logoutIcon}Sign Out</button>
         </nav>
-        <div className="sidebar__footer">
-          <div className="sidebar__user">
-            <div className="sidebar__avatar">{initials}</div>
-            <div className="sidebar__user-info">
-              <p className="sidebar__username">{user?.username}</p>
-              <p className="sidebar__role">Seller</p>
+        <div className="p-3 border-t border-outline-variant mt-auto">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
+            <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-[13px] font-bold text-on-surface shrink-0 border border-outline-variant">{initials}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-on-surface whitespace-nowrap overflow-hidden text-ellipsis">{user?.username}</p>
+              <p className="text-[11px] text-on-surface-variant">Seller</p>
             </div>
           </div>
         </div>
       </aside>
-      <main className="dashboard__main">
+
+      {/* ── Main ── */}
+      <main className="flex-1 min-w-0 min-h-screen p-4 md:p-8 pb-20 md:pb-8 overflow-y-auto bg-surface-low">
         {tab === 'overview' && <SellerOverviewTab />}
         {tab === 'products' && <SellerProductsTab />}
         {tab === 'orders'   && <SellerOrdersTab />}
       </main>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="dashboard__mobile-nav" aria-label="Dashboard navigation">
-        <div className="dashboard__mobile-nav-inner">
+      <nav className="hidden fixed bottom-0 left-0 right-0 z-[100] bg-surface border-t border-outline-variant pb-[env(safe-area-inset-bottom,4px)] shadow-[0_-4px_16px_rgba(11,28,48,0.08)] max-md:flex" aria-label="Dashboard navigation">
+        <div className="flex items-stretch justify-between w-full">
           {([
             ['overview', 'Overview', <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>],
             ['products', 'Products', <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>],
             ['orders',   'Orders',   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>],
           ] as [Tab, string, React.ReactNode][]).map(([key, label, icon]) => (
-            <button key={key} className={`dashboard__mobile-nav-btn${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
+            <button key={key} className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 px-0.5 bg-transparent border-none cursor-pointer font-sans text-[0.65rem] font-semibold whitespace-nowrap transition-colors ${tab === key ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'}`} onClick={() => setTab(key)}>
               {icon}{label}
             </button>
           ))}
-          <button className="dashboard__mobile-nav-btn" onClick={handleLogout}>
+          <button className="flex-1 flex flex-col items-center justify-center gap-1 py-2 px-0.5 bg-transparent border-none cursor-pointer font-sans text-[0.65rem] font-semibold text-on-surface-variant hover:text-on-surface transition-colors" onClick={handleLogout}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
@@ -135,48 +160,40 @@ function SellerOverviewTab() {
     }).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p style={{ color: 'var(--on-surface-variant)' }}>Loading…</p>;
+  if (loading) return <p style={{ color: 'var(--color-on-surface-variant)' }}>Loading…</p>;
 
   return (
     <>
-      <div className="dashboard__header">
-        <h1 className="dashboard__title">Welcome back, {user?.username} 👋</h1>
-        <p className="dashboard__subtitle">Here's what's happening in your store today.</p>
+      <div className="mb-7">
+        <h1 className="text-[24px] font-bold text-on-surface mb-1">Welcome back, {user?.username} 👋</h1>
+        <p className="text-[14px] text-on-surface-variant">Here's what's happening in your store today.</p>
       </div>
 
       {/* Primary stats */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--blue">📦</div>
-          <p className="stat-card__label">My Products</p>
-          <p className="stat-card__value">{stats.totalProducts}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+        <div className="bg-surface border border-outline-variant rounded-xl p-5 flex flex-col gap-1.5">
+          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-[0.05em]">My Products</p>
+          <p className="text-[28px] font-extrabold text-on-surface leading-none">{stats.totalProducts}</p>
           {stats.outOfStock > 0 && (
-            <p className="stat-card__sub" style={{ color: '#b85c00' }}>
-              ⚠ {stats.outOfStock} out of stock
-            </p>
+            <p className="text-[12px] text-orange-700">⚠ {stats.outOfStock} out of stock</p>
           )}
         </div>
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--orange">🛒</div>
-          <p className="stat-card__label">Total Orders</p>
-          <p className="stat-card__value">{stats.totalOrders}</p>
+        <div className="bg-surface border border-outline-variant rounded-xl p-5 flex flex-col gap-1.5">
+          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-[0.05em]">Total Orders</p>
+          <p className="text-[28px] font-extrabold text-on-surface leading-none">{stats.totalOrders}</p>
           {stats.pendingOrders > 0 && (
-            <p className="stat-card__sub" style={{ color: '#b85c00' }}>
-              {stats.pendingOrders} need attention
-            </p>
+            <p className="text-[12px] text-orange-700">{stats.pendingOrders} need attention</p>
           )}
         </div>
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--green">💰</div>
-          <p className="stat-card__label">Total Revenue</p>
-          <p className="stat-card__value">${stats.totalRevenue.toFixed(2)}</p>
-          <p className="stat-card__sub">Excluding cancelled orders</p>
+        <div className="bg-surface border border-outline-variant rounded-xl p-5 flex flex-col gap-1.5">
+          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-[0.05em]">Total Revenue</p>
+          <p className="text-[28px] font-extrabold text-on-surface leading-none">${stats.totalRevenue.toFixed(2)}</p>
+          <p className="text-[12px] text-on-surface-variant">Excluding cancelled orders</p>
         </div>
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--purple">✅</div>
-          <p className="stat-card__label">Delivered</p>
-          <p className="stat-card__value">{stats.deliveredOrders}</p>
-          <p className="stat-card__sub">
+        <div className="bg-surface border border-outline-variant rounded-xl p-5 flex flex-col gap-1.5">
+          <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-[0.05em]">Delivered</p>
+          <p className="text-[28px] font-extrabold text-on-surface leading-none">{stats.deliveredOrders}</p>
+          <p className="text-[12px] text-on-surface-variant">
             {stats.totalOrders > 0
               ? `${Math.round((stats.deliveredOrders / stats.totalOrders) * 100)}% completion rate`
               : 'No orders yet'}
@@ -184,26 +201,33 @@ function SellerOverviewTab() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      {/* Two-column overview grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Orders */}
-        <div className="section-card" style={{ marginBottom: 0 }}>
-          <div className="section-card__header">
-            <h2 className="section-card__title">Recent Orders</h2>
+        <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-[18px] border-b border-outline-variant gap-3 flex-wrap">
+            <h2 className="text-[16px] font-bold text-on-surface">Recent Orders</h2>
           </div>
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[14px]">
               <thead>
-                <tr><th>ID</th><th>Date</th><th>Total</th><th>Status</th></tr>
+                <tr>
+                  {['ID','Date','Total','Status'].map(h => (
+                    <th key={h} className="px-4 py-[10px] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-on-surface-variant bg-surface-low border-b border-outline-variant whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {recentOrders.length === 0
-                  ? <tr><td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No orders yet</td></tr>
+                  ? <tr><td colSpan={4} className="text-center py-8 text-on-surface-variant">No orders yet</td></tr>
                   : recentOrders.map(o => (
-                    <tr key={o.orderId}>
-                      <td>#{o.orderId}</td>
-                      <td>{o.orderDate}</td>
-                      <td>${o.totalAmount?.toFixed(2)}</td>
-                      <td><span className={`badge ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span></td>
+                    <tr key={o.orderId} className="hover:bg-surface-low">
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">#{o.orderId}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">{o.orderDate}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">${o.totalAmount?.toFixed(2)}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
+                        <span className={`inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-bold uppercase tracking-[0.04em] border ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -212,24 +236,28 @@ function SellerOverviewTab() {
         </div>
 
         {/* Top Products */}
-        <div className="section-card" style={{ marginBottom: 0 }}>
-          <div className="section-card__header">
-            <h2 className="section-card__title">Your Products</h2>
+        <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-[18px] border-b border-outline-variant gap-3 flex-wrap">
+            <h2 className="text-[16px] font-bold text-on-surface">Your Products</h2>
           </div>
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[14px]">
               <thead>
-                <tr><th>Name</th><th>Price</th><th>Stock</th></tr>
+                <tr>
+                  {['Name','Price','Stock'].map(h => (
+                    <th key={h} className="px-4 py-[10px] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-on-surface-variant bg-surface-low border-b border-outline-variant whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {topProducts.length === 0
-                  ? <tr><td colSpan={3} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No products yet</td></tr>
+                  ? <tr><td colSpan={3} className="text-center py-8 text-on-surface-variant">No products yet</td></tr>
                   : topProducts.map(p => (
-                    <tr key={p.productId}>
-                      <td style={{ fontWeight: 600 }}>{p.productName}</td>
-                      <td>${p.price?.toFixed(2)}</td>
-                      <td>
-                        <span className={`badge ${p.quantity > 0 ? 'badge--green' : 'badge--red'}`}>
+                    <tr key={p.productId} className="hover:bg-surface-low">
+                      <td className="px-4 py-3 border-b border-outline-variant font-semibold text-on-surface align-middle">{p.productName}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">${p.price?.toFixed(2)}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
+                        <span className={`inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-bold uppercase tracking-[0.04em] border ${p.quantity > 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
                           {p.quantity > 0 ? p.quantity : 'Out'}
                         </span>
                       </td>
@@ -243,22 +271,17 @@ function SellerOverviewTab() {
 
       {/* Order status breakdown */}
       {stats.totalOrders > 0 && (
-        <div className="section-card" style={{ marginTop: '24px' }}>
-          <div className="section-card__header">
-            <h2 className="section-card__title">Order Status Breakdown</h2>
+        <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden mt-6">
+          <div className="flex items-center justify-between px-5 py-[18px] border-b border-outline-variant gap-3 flex-wrap">
+            <h2 className="text-[16px] font-bold text-on-surface">Order Status Breakdown</h2>
           </div>
-          <div style={{ display: 'flex', gap: '12px', padding: '16px 20px', flexWrap: 'wrap' }}>
+          <div className="flex gap-3 px-5 py-4 flex-wrap">
             {(['Accepted', 'Processing', 'Shipped', 'Delivered', 'Cancelled'] as const).map(status => {
               const count = recentOrders.filter(o => o.orderStatus === status).length;
               return (
-                <div key={status} style={{
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '8px 14px', borderRadius: '10px',
-                  background: 'var(--surface-container-low)',
-                  border: '1px solid var(--outline-variant)',
-                }}>
-                  <span className={`badge ${statusBadge(status)}`}>{status}</span>
-                  <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--on-surface)' }}>{count}</span>
+                <div key={status} className="flex items-center gap-2 px-3.5 py-2 rounded-[10px] bg-surface-low border border-outline-variant">
+                  <span className={`inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-bold uppercase tracking-[0.04em] border ${statusBadge(status)}`}>{status}</span>
+                  <span className="font-bold text-[15px] text-on-surface">{count}</span>
                 </div>
               );
             })}
@@ -299,36 +322,46 @@ function SellerProductsTab() {
 
   return (
     <>
-      <div className="dashboard__header">
-        <h1 className="dashboard__title">My Products</h1>
-        <p className="dashboard__subtitle">{total} products in your store</p>
+      <div className="mb-7">
+        <h1 className="text-[24px] font-bold text-on-surface mb-1">My Products</h1>
+        <p className="text-[14px] text-on-surface-variant">{total} products in your store</p>
       </div>
-      {error && <div className="alert alert--error">{error}</div>}
-      <div className="section-card">
-        <div className="section-card__header">
-          <h2 className="section-card__title">Product Catalog</h2>
-          <button className="btn btn--primary" onClick={() => { setEditing(null); setShowModal(true); }}>+ Add Product</button>
+      {error && <div className={alertCls('error')}>{error}</div>}
+      <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden mb-6">
+        <div className="flex items-center justify-between px-5 py-[18px] border-b border-outline-variant gap-3 flex-wrap">
+          <h2 className="text-[16px] font-bold text-on-surface">Product Catalog</h2>
+          <button className={btnCls('primary')} onClick={() => { setEditing(null); setShowModal(true); }}>+ Add Product</button>
         </div>
-        <div className="data-table-wrap">
-          <table className="data-table">
-            <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Discount</th><th>Stock</th><th>Actions</th></tr></thead>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[14px]">
+            <thead>
+              <tr>
+                {['ID','Name','Price','Discount','Stock','Actions'].map(h => (
+                  <th key={h} className="px-4 py-[10px] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-on-surface-variant bg-surface-low border-b border-outline-variant whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
               {loading
-                ? <tr className="loading-row"><td colSpan={6}>Loading…</td></tr>
+                ? <tr><td colSpan={6} className="text-center py-10 text-on-surface-variant">Loading…</td></tr>
                 : products.length === 0
-                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No products yet. Add your first one!</td></tr>
+                  ? <tr><td colSpan={6} className="text-center py-8 text-on-surface-variant">No products yet. Add your first one!</td></tr>
                   : products.map(p => (
-                    <tr key={p.productId}>
-                      <td>#{p.productId}</td>
-                      <td style={{ fontWeight: 600 }}>{p.productName}</td>
-                      <td>${p.price?.toFixed(2)}</td>
-                      <td>{p.discount}%</td>
-                      <td><span className={`badge ${p.quantity > 0 ? 'badge--green' : 'badge--red'}`}>{p.quantity > 0 ? p.quantity : 'Out'}</span></td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button className="btn btn--outline btn--sm" onClick={() => { setEditing(p); setShowModal(true); }}>Edit</button>
-                          <button className="btn btn--outline btn--sm" style={{ color: 'var(--primary)' }} onClick={() => setUploadTarget(p)}>📷 Image</button>
-                          <button className="btn btn--danger btn--sm" onClick={() => handleDelete(p.productId)}>Delete</button>
+                    <tr key={p.productId} className="hover:bg-surface-low">
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">#{p.productId}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant font-semibold text-on-surface align-middle">{p.productName}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">${p.price?.toFixed(2)}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">{p.discount}%</td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
+                        <span className={`inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-bold uppercase tracking-[0.04em] border ${p.quantity > 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                          {p.quantity > 0 ? p.quantity : 'Out'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
+                        <div className="flex gap-1.5">
+                          <button className={btnCls('outline', true)} onClick={() => { setEditing(p); setShowModal(true); }}>Edit</button>
+                          <button className={btnCls('outline', true)} style={{ color: 'var(--color-primary)' }} onClick={() => setUploadTarget(p)}>📷 Image</button>
+                          <button className={btnCls('danger', true)} onClick={() => handleDelete(p.productId)}>Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -336,10 +369,10 @@ function SellerProductsTab() {
             </tbody>
           </table>
         </div>
-        <div className="pagination">
-          <button className="btn btn--outline btn--sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
+        <div className="flex items-center justify-end gap-2 px-5 py-[14px] border-t border-outline-variant text-[13px] text-on-surface-variant">
+          <button className={btnCls('outline', true)} disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
           <span>Page {page + 1}</span>
-          <button className="btn btn--outline btn--sm" disabled={(page + 1) * 15 >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
+          <button className={btnCls('outline', true)} disabled={(page + 1) * 15 >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       </div>
       {showModal && <ProductModal product={editing} categories={categories} isAdmin={false} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load(); }} />}
@@ -383,21 +416,29 @@ function SellerOrdersTab() {
 
   return (
     <>
-      <div className="dashboard__header">
-        <h1 className="dashboard__title">My Orders</h1>
-        <p className="dashboard__subtitle">Orders containing your products</p>
+      <div className="mb-7">
+        <h1 className="text-[24px] font-bold text-on-surface mb-1">My Orders</h1>
+        <p className="text-[14px] text-on-surface-variant">Orders containing your products</p>
       </div>
-      {error && <div className="alert alert--error">{error}</div>}
-      <div className="section-card">
-        <div className="section-card__header"><h2 className="section-card__title">Order List</h2></div>
-        <div className="data-table-wrap">
-          <table className="data-table">
-            <thead><tr><th>ID</th><th>Customer</th><th>Date</th><th>Products</th><th>Address</th><th>Total</th><th>Status</th><th>Update</th></tr></thead>
+      {error && <div className={alertCls('error')}>{error}</div>}
+      <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden mb-6">
+        <div className="flex items-center justify-between px-5 py-[18px] border-b border-outline-variant gap-3 flex-wrap">
+          <h2 className="text-[16px] font-bold text-on-surface">Order List</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[14px]">
+            <thead>
+              <tr>
+                {['ID','Customer','Date','Products','Address','Total','Status','Update'].map(h => (
+                  <th key={h} className="px-4 py-[10px] text-left text-[11px] font-bold uppercase tracking-[0.06em] text-on-surface-variant bg-surface-low border-b border-outline-variant whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
               {loading
-                ? <tr className="loading-row"><td colSpan={8}>Loading…</td></tr>
+                ? <tr><td colSpan={8} className="text-center py-10 text-on-surface-variant">Loading…</td></tr>
                 : orders.length === 0
-                  ? <tr><td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--on-surface-variant)' }}>No orders yet</td></tr>
+                  ? <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant">No orders yet</td></tr>
                   : orders.map(o => {
                     const addr = o.address;
                     const addrLine = addr
@@ -405,41 +446,46 @@ function SellerOrdersTab() {
                           .filter(Boolean).join(', ')
                       : '—';
                     return (
-                    <tr key={o.orderId}>
-                      <td>#{o.orderId}</td><td>{o.email}</td><td>{o.orderDate}</td>
-                      <td>
+                    <tr key={o.orderId} className="hover:bg-surface-low">
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">#{o.orderId}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">{o.email}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">{o.orderDate}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
                         {o.orderItems && o.orderItems.length > 0 ? (
-                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <ul className="m-0 p-0 list-none flex flex-col gap-[3px]">
                             {o.orderItems.map((item, i) => (
-                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--secondary)', flexShrink: 0, display: 'inline-block' }} />
-                                <span style={{ fontWeight: 500, fontSize: 13 }}>{item.product?.productName}</span>
+                              <li key={i} className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0 inline-block" />
+                                <span className="font-medium text-[13px]">{item.product?.productName}</span>
                                 {item.quantity > 1 && (
-                                  <span style={{ fontSize: 11, color: 'var(--on-surface-variant)', background: 'var(--surface-container)', borderRadius: 4, padding: '1px 5px' }}>×{item.quantity}</span>
+                                  <span className="text-[11px] text-on-surface-variant bg-surface-container rounded px-[5px] py-[1px]">×{item.quantity}</span>
                                 )}
                               </li>
                             ))}
                           </ul>
-                        ) : <span style={{ color: 'var(--on-surface-variant)' }}>—</span>}
+                        ) : <span className="text-on-surface-variant">—</span>}
                       </td>
-                      <td style={{ fontSize: 13, color: 'var(--on-surface-variant)', maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4 }}>
-                        {addrLine}
+                      <td className="px-4 py-3 border-b border-outline-variant text-[13px] text-on-surface-variant max-w-[220px] whitespace-normal leading-[1.4] align-middle">{addrLine}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant text-on-surface align-middle">${o.totalAmount?.toFixed(2)}</td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
+                        <span className={`inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-bold uppercase tracking-[0.04em] border ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span>
                       </td>
-                      <td>${o.totalAmount?.toFixed(2)}</td>
-                      <td><span className={`badge ${statusBadge(o.orderStatus)}`}>{o.orderStatus}</span></td>
-                      <td>
+                      <td className="px-4 py-3 border-b border-outline-variant align-middle">
                         {o.orderStatus === 'PENDING_PAYMENT' ? (
                           <button
-                            className="btn btn--primary btn--sm"
+                            className={btnCls('primary', true)}
                             disabled={updatingId === o.orderId}
                             onClick={() => handleApprovePayment(o.orderId)}
                           >
                             Approve
                           </button>
                         ) : (
-                          <select className="form-select" style={{ padding: '4px 8px', fontSize: '12px' }}
-                            value={o.orderStatus} disabled={updatingId === o.orderId}
-                            onChange={e => handleStatusChange(o.orderId, e.target.value)}>
+                          <select
+                            className="px-2 py-1 text-[12px] border border-outline-variant rounded-lg bg-surface text-on-surface outline-none focus:border-secondary"
+                            value={o.orderStatus}
+                            disabled={updatingId === o.orderId}
+                            onChange={e => handleStatusChange(o.orderId, e.target.value)}
+                          >
                             {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         )}
@@ -450,10 +496,10 @@ function SellerOrdersTab() {
             </tbody>
           </table>
         </div>
-        <div className="pagination">
-          <button className="btn btn--outline btn--sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
+        <div className="flex items-center justify-end gap-2 px-5 py-[14px] border-t border-outline-variant text-[13px] text-on-surface-variant">
+          <button className={btnCls('outline', true)} disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
           <span>Page {page + 1} of {Math.ceil(total / 15) || 1}</span>
-          <button className="btn btn--outline btn--sm" disabled={(page + 1) * 15 >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
+          <button className={btnCls('outline', true)} disabled={(page + 1) * 15 >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       </div>
     </>

@@ -59,6 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const login = async (username: string, password: string) => {
+    // If a user is already signed in, sign them out first so the old HttpOnly
+    // cookie is cleared before the new one arrives. Without this, the browser
+    // may keep sending the stale cookie on the immediate GET /api/auth/user
+    // that follows, which makes it look like the old account is still active.
+    if (user) {
+      try {
+        await apiClient.signout();
+      } catch {
+        // best-effort — carry on even if signout fails
+      }
+      setUser(null);
+      setCartCount(0);
+    }
     // Backend sets the HttpOnly cookie automatically in the response
     await apiClient.login(username, password);
     // Always fetch the full user from the server after login so roles are
@@ -75,11 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear local state immediately so no stale user is visible during the request
     setUser(null);
     setCartCount(0);
+
+    // Clean up local storage and session storage
     localStorage.removeItem('jwtToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+
+    // Expire non-HttpOnly client cookies on all paths if any exist
+    document.cookie = 'ecommerce-cookie=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    document.cookie = 'ecommerce-cookie=; Path=/api; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+
     try {
       await apiClient.signout();
-    } catch {
-      // Signout failed on the server side — local state is already cleared, that's fine
+    } catch (err) {
+      console.warn('Signout request failed on backend:', err);
     }
   };
 

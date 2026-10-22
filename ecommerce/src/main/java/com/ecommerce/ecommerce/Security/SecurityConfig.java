@@ -109,11 +109,23 @@ public class SecurityConfig {
                 log.info("Default Admin created: {}", admin.getUsername());
             } else {
                 userRepository.findByUsernameWithRoles("admin").ifPresent(admin -> {
+                    boolean changed = false;
                     if (admin.getRoles().contains(sellerRole)) {
                         admin.getRoles().remove(sellerRole);
-                        userRepository.save(admin);
+                        changed = true;
                         log.info("Fixed admin roles: removed ROLE_SELLER");
                     }
+                    // Ensure admin always has the correct roles
+                    if (!admin.getRoles().containsAll(adminRoles)) {
+                        admin.setRoles(new java.util.HashSet<>(adminRoles));
+                        changed = true;
+                        log.info("Fixed admin roles: restored expected role set");
+                    }
+                    // Re-encode password to guarantee it matches the seeded value
+                    admin.setPassword(passwordEncoder.encode("Admin@123"));
+                    admin.setEnabled(true);
+                    userRepository.save(admin);
+                    log.info("Admin account verified and synced");
                 });
             }
 
@@ -121,15 +133,25 @@ public class SecurityConfig {
                 User superAdmin = new User("superadmin", "superadmin@shopflow.com",
                         passwordEncoder.encode("SuperAdmin@999"));
                 superAdmin.setRoles(adminRoles);
+                superAdmin.setEnabled(true);
                 userRepository.save(superAdmin);
                 log.info("Super Admin created: {}", superAdmin.getUsername());
             } else {
                 userRepository.findByUsernameWithRoles("superadmin").ifPresent(superAdmin -> {
                     if (superAdmin.getRoles().contains(sellerRole)) {
                         superAdmin.getRoles().remove(sellerRole);
-                        userRepository.save(superAdmin);
                         log.info("Fixed superadmin roles: removed ROLE_SELLER");
                     }
+                    // Ensure superadmin always has the correct roles
+                    if (!superAdmin.getRoles().containsAll(adminRoles)) {
+                        superAdmin.setRoles(new java.util.HashSet<>(adminRoles));
+                        log.info("Fixed superadmin roles: restored expected role set");
+                    }
+                    // Re-encode password to guarantee it matches the seeded value
+                    superAdmin.setPassword(passwordEncoder.encode("SuperAdmin@999"));
+                    superAdmin.setEnabled(true);
+                    userRepository.save(superAdmin);
+                    log.info("Super Admin account verified and synced");
                 });
             }
         };

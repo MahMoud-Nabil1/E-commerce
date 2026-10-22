@@ -6,6 +6,10 @@ export interface User {
   name?: string;
   phone?: string;
   joinedDate?: string;
+  // Account status fields returned by the sellers list endpoint
+  enabled?: boolean;
+  banned?: boolean;
+  suspended?: boolean;
 }
 
 export interface UserProfile {
@@ -132,4 +136,39 @@ export interface OrderResponse {
   totalElements: number;
   totalPages: number;
   lastPage: boolean;
+}
+
+export interface Review {
+  reviewId: number;
+  productId: number;
+  username: string;
+  rating: number;
+  headline?: string;
+  comment?: string;
+  verifiedPurchase: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ReviewPage {
+  content: Review[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  lastPage: boolean;
+}
+
+export interface ReviewSummary {
+  productId: number;
+  averageRating: number;
+  totalReviews: number;
+  /** Key: star value (1-5), Value: count */
+  starCounts: Record<number, number>;
+}
+
+export interface ReviewPayload {
+  rating: number;
+  headline?: string;
+  comment?: string;
 }

@@ -67,12 +67,13 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                 userId,
                                 username,
                                 email != null ? email : username,
-                                null,
-                                true,
+                                null,   // password — not needed for stateless JWT principal
+                                true,   // enabled
+                                true,   // accountNonLocked — ban/suspension checked at login, not per-request
                                 authorities,
-                                null,
-                                null,
-                                null
+                                null,   // displayName
+                                null,   // phone
+                                null    // joinedDate
                         );
                     } else {
                         // Fallback for legacy tokens that only contained the username claim

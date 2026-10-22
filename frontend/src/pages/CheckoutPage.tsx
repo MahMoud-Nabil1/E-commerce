@@ -61,38 +61,34 @@ export default function CheckoutPage() {
     } finally { setLoading(false); }
   };
 
-  /* ── Styles ── */
-  const inp: React.CSSProperties = {
-    width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
-    border: '1px solid #ccc', fontSize: '0.9rem', boxSizing: 'border-box',
-  };
-  const lbl: React.CSSProperties = { display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.85rem', color: '#444' };
+  /* ── Shared field styles ── */
+  const inputCls = 'w-full px-3 py-[0.6rem] rounded-md border border-outline-variant text-[0.9rem] text-on-surface bg-surface box-border font-sans outline-none focus:border-secondary transition-colors';
+  const labelCls = 'block font-semibold mb-1.5 text-[0.85rem] text-on-surface-variant';
 
   return (
-    <div className="container" style={{ padding: '2rem 1rem', maxWidth: '640px' }}>
-      <h1 className="headline-lg" style={{ marginBottom: '1.75rem' }}>Checkout</h1>
+    <div className="container px-4 py-8 max-w-[640px]">
+      <h1 className="text-3xl font-extrabold text-on-surface tracking-tight mb-7">Checkout</h1>
 
       {error && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: '6px', background: '#ffebee', color: '#c62828', fontSize: '0.9rem' }}>
+        <div className="mb-4 px-4 py-3 rounded-md bg-red-50 text-red-800 text-[0.9rem]">
           {error}
         </div>
       )}
 
-      <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      <form onSubmit={handlePlaceOrder} className="flex flex-col gap-7">
 
         {/* ── SHIPPING ADDRESS ─────────────────────────────── */}
         <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Shipping Address</h2>
+          <div className="flex items-center justify-between mb-[0.85rem]">
+            <h2 className="text-base font-bold text-on-surface m-0">Shipping Address</h2>
             <button
               type="button"
               onClick={() => { setShowAddForm(v => !v); setAddrError(null); setAddrForm(EMPTY_FORM); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.35rem',
-                background: showAddForm ? '#f5f5f5' : '#005c97', color: showAddForm ? '#333' : '#fff',
-                border: 'none', borderRadius: '6px', padding: '0.4rem 0.9rem',
-                fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
-              }}
+              className={`flex items-center gap-1.5 border-none rounded-md px-[0.9rem] py-[0.4rem] text-[0.85rem] font-semibold cursor-pointer transition-colors ${
+                showAddForm
+                  ? 'bg-surface-low text-on-surface'
+                  : 'bg-secondary text-on-secondary hover:bg-secondary-container'
+              }`}
             >
               {showAddForm ? '✕ Cancel' : '+ Add New Address'}
             </button>
@@ -100,19 +96,17 @@ export default function CheckoutPage() {
 
           {/* Saved address cards */}
           {addresses.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: showAddForm ? '1rem' : 0 }}>
+            <div className={`flex flex-col gap-[0.6rem] ${showAddForm ? 'mb-4' : ''}`}>
               {addresses.map(addr => {
                 const selected = addressId === addr.addressId;
                 return (
                   <label
                     key={addr.addressId}
-                    style={{
-                      display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-                      padding: '0.85rem 1rem', borderRadius: '8px', cursor: 'pointer',
-                      border: selected ? '2px solid #005c97' : '1.5px solid #ddd',
-                      background: selected ? '#f0f7ff' : '#fff',
-                      transition: 'border 0.15s',
-                    }}
+                    className={`flex items-start gap-3 px-4 py-[0.85rem] rounded-lg cursor-pointer transition-[border,background] ${
+                      selected
+                        ? 'border-2 border-secondary bg-blue-50'
+                        : 'border-[1.5px] border-outline-variant bg-white'
+                    }`}
                   >
                     <input
                       type="radio"
@@ -120,14 +114,14 @@ export default function CheckoutPage() {
                       value={addr.addressId}
                       checked={selected}
                       onChange={() => setAddressId(addr.addressId)}
-                      style={{ marginTop: '3px', accentColor: '#005c97' }}
+                      className="mt-[3px] accent-secondary"
                     />
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 700, margin: '0 0 2px' }}>{addr.buildingName}</p>
-                      <p style={{ margin: '0', fontSize: '0.875rem', color: '#555' }}>
+                    <div className="flex-1">
+                      <p className="font-bold m-0 mb-0.5">{addr.buildingName}</p>
+                      <p className="m-0 text-[0.875rem] text-on-surface-variant">
                         {addr.street}, {addr.city}, {addr.state}
                       </p>
-                      <p style={{ margin: '0', fontSize: '0.875rem', color: '#555' }}>
+                      <p className="m-0 text-[0.875rem] text-on-surface-variant">
                         {addr.country} — {addr.pincode}
                       </p>
                     </div>
@@ -139,16 +133,16 @@ export default function CheckoutPage() {
 
           {/* No addresses + no form open */}
           {addresses.length === 0 && !showAddForm && (
-            <p style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>
+            <p className="text-on-surface-variant text-[0.9rem] m-0">
               No saved addresses yet. Click <strong>"+ Add New Address"</strong> to add one.
             </p>
           )}
 
           {/* Manage link */}
           {addresses.length > 0 && !showAddForm && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#666' }}>
+            <p className="mt-2 text-[0.8rem] text-on-surface-variant">
               Need to edit or delete an address?{' '}
-              <Link to="/profile" state={{ tab: 'addresses' }} style={{ color: '#005c97', fontWeight: 600 }}>
+              <Link to="/profile" state={{ tab: 'addresses' }} className="text-secondary font-semibold no-underline hover:underline">
                 Manage in Profile →
               </Link>
             </p>
@@ -156,42 +150,39 @@ export default function CheckoutPage() {
 
           {/* ── Inline add-address form ── */}
           {showAddForm && (
-            <div style={{
-              background: '#f5f8ff', border: '1.5px solid #c5d5f0',
-              borderRadius: '10px', padding: '1.25rem',
-            }}>
-              <p style={{ fontWeight: 700, color: '#005c97', margin: '0 0 1rem' }}>New Address</p>
-              {addrError && <p style={{ color: '#c62828', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>{addrError}</p>}
+            <div className="bg-blue-50 border-[1.5px] border-blue-200 rounded-[10px] p-5">
+              <p className="font-bold text-secondary m-0 mb-4">New Address</p>
+              {addrError && <p className="text-red-700 text-[0.85rem] m-0 mb-3">{addrError}</p>}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={lbl}>Building / Apartment Name</label>
-                  <input style={inp} type="text" placeholder="e.g. Nile Tower, Apt 4B"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[0.7rem]">
+                <div className="col-span-1 sm:col-span-2">
+                  <label className={labelCls}>Building / Apartment Name</label>
+                  <input className={inputCls} type="text" placeholder="e.g. Nile Tower, Apt 4B"
                     value={addrForm.buildingName} onChange={e => setField('buildingName', e.target.value)} />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={lbl}>Street</label>
-                  <input style={inp} type="text" placeholder="e.g. 12 Tahrir St"
+                <div className="col-span-1 sm:col-span-2">
+                  <label className={labelCls}>Street</label>
+                  <input className={inputCls} type="text" placeholder="e.g. 12 Tahrir St"
                     value={addrForm.street} onChange={e => setField('street', e.target.value)} />
                 </div>
                 <div>
-                  <label style={lbl}>City</label>
-                  <input style={inp} type="text" placeholder="Cairo"
+                  <label className={labelCls}>City</label>
+                  <input className={inputCls} type="text" placeholder="Cairo"
                     value={addrForm.city} onChange={e => setField('city', e.target.value)} />
                 </div>
                 <div>
-                  <label style={lbl}>State / Governorate</label>
-                  <input style={inp} type="text" placeholder="Cairo"
+                  <label className={labelCls}>State / Governorate</label>
+                  <input className={inputCls} type="text" placeholder="Cairo"
                     value={addrForm.state} onChange={e => setField('state', e.target.value)} />
                 </div>
                 <div>
-                  <label style={lbl}>Country</label>
-                  <input style={inp} type="text" placeholder="Egypt"
+                  <label className={labelCls}>Country</label>
+                  <input className={inputCls} type="text" placeholder="Egypt"
                     value={addrForm.country} onChange={e => setField('country', e.target.value)} />
                 </div>
                 <div>
-                  <label style={lbl}>Postal Code</label>
-                  <input style={inp} type="text" placeholder="11511"
+                  <label className={labelCls}>Postal Code</label>
+                  <input className={inputCls} type="text" placeholder="11511"
                     value={addrForm.pincode} onChange={e => setField('pincode', e.target.value)} />
                 </div>
               </div>
@@ -200,13 +191,7 @@ export default function CheckoutPage() {
                 type="button"
                 onClick={handleAddAddress}
                 disabled={addrSaving}
-                style={{
-                  marginTop: '1rem', width: '100%', padding: '0.65rem',
-                  background: '#005c97', color: '#fff', border: 'none',
-                  borderRadius: '6px', fontWeight: 700, fontSize: '0.9rem',
-                  cursor: addrSaving ? 'not-allowed' : 'pointer',
-                  opacity: addrSaving ? 0.7 : 1,
-                }}
+                className={`mt-4 w-full py-[0.65rem] bg-secondary text-on-secondary border-none rounded-md font-bold text-[0.9rem] transition-opacity ${addrSaving ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-secondary-container'}`}
               >
                 {addrSaving ? 'Saving…' : 'Save Address'}
               </button>
@@ -216,8 +201,12 @@ export default function CheckoutPage() {
 
         {/* ── PAYMENT METHOD ───────────────────────────────── */}
         <section>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.85rem' }}>Payment Method</h2>
-          <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={inp}>
+          <h2 className="text-base font-bold text-on-surface mb-[0.85rem]">Payment Method</h2>
+          <select
+            value={paymentMethod}
+            onChange={e => setPaymentMethod(e.target.value)}
+            className={inputCls}
+          >
             <option value="CASH_ON_DELIVERY">Cash on Delivery (COD)</option>
             <option value="INSTAPAY">InstaPay</option>
             <option value="VODAFONE_CASH">Vodafone Cash</option>
@@ -226,11 +215,14 @@ export default function CheckoutPage() {
 
         {paymentMethod !== 'CASH_ON_DELIVERY' && (
           <section>
-            <label style={{ ...lbl, fontSize: '1rem', fontWeight: 700 }}>Transaction ID / Wallet Number</label>
+            <label className="block text-base font-bold text-on-surface mb-[0.85rem]">Transaction ID / Wallet Number</label>
             <input
-              type="text" value={transactionId} onChange={e => setTransactionId(e.target.value)}
+              type="text"
+              value={transactionId}
+              onChange={e => setTransactionId(e.target.value)}
               placeholder="Enter transfer transaction reference ID"
-              required style={inp}
+              required
+              className={inputCls}
             />
           </section>
         )}
@@ -238,12 +230,11 @@ export default function CheckoutPage() {
         <button
           type="submit"
           disabled={loading || !addressId}
-          className="cart-btn-primary"
-          style={{
-            padding: '0.9rem', fontSize: '1rem', border: 'none', borderRadius: '8px',
-            fontWeight: 700, cursor: loading || !addressId ? 'not-allowed' : 'pointer',
-            opacity: loading || !addressId ? 0.6 : 1,
-          }}
+          className={`w-full py-[0.9rem] text-base border-none rounded-lg font-bold bg-secondary text-on-secondary transition-all ${
+            loading || !addressId
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer hover:bg-secondary-container active:scale-[0.98]'
+          }`}
         >
           {loading ? 'Processing…' : 'Confirm and Place Order'}
         </button>

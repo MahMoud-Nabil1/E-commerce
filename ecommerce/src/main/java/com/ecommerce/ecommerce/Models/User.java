@@ -101,6 +101,14 @@ public class User {
     @Column(name = "enabled", nullable = false, columnDefinition = "boolean default true")
     private boolean enabled = true;
 
+    // Permanent ban — account cannot log in and cannot be self-reinstated.
+    @Column(name = "banned", nullable = false, columnDefinition = "boolean default false")
+    private boolean banned = false;
+
+    // Temporary suspension — admin can lift it without deleting the account.
+    @Column(name = "suspended", nullable = false, columnDefinition = "boolean default false")
+    private boolean suspended = false;
+
     @Column(name = "email_verification_otp")
     private String emailVerificationOtp;
 
